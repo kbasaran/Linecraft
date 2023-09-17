@@ -412,7 +412,7 @@ class CurveAnalyze(qtw.QWidget):
         import_table_dialog.show()
 
     def _import_table_requested(self, source, import_settings):
-        # get the input
+        # ---- get the input
         if source == "file":
             file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
                                                    dir=settings.last_used_folder,
@@ -428,7 +428,7 @@ class CurveAnalyze(qtw.QWidget):
         elif source == "clipboard":
             import_file = StringIO(pyperclip.paste())
 
-        # setup how to read it
+        # ---- setup how to read it
         if import_settings["no_header"] == 0:
             skiprows = None
             header = None
@@ -441,7 +441,7 @@ class CurveAnalyze(qtw.QWidget):
         else:
             index_col = import_settings["no_index"] - 1
 
-        # read it
+        # ---- read it
         try:
             df = pd.read_csv(import_file,
                                delimiter=import_settings["delimiter"],
@@ -458,11 +458,11 @@ class CurveAnalyze(qtw.QWidget):
             return
 
 
-        # Transpose if frequencies are in indexes
+        # ---- transpose if frequencies are in indexes
         if import_settings["layout_type"] == 1:
             df = df.transpose()
 
-        # validate headers
+        # ---- validate headers
         try:
             signal_tools.check_if_sorted_and_valid(df.columns)
             df.columns = df.columns.astype(float)
@@ -470,7 +470,7 @@ class CurveAnalyze(qtw.QWidget):
             raise e
             return
 
-        # Validate size
+        # ---- validate size
         if len(df.columns) < 2:
             raise ValueError("Curve needs to have more than one frequency point."
                              f"Frequency points: {df.columns}")
@@ -479,7 +479,7 @@ class CurveAnalyze(qtw.QWidget):
             raise ValueError("Import does not have any curves to put on graph.")
             return
         
-        # validate datatype
+        # ---- validate datatype
         try:
             df = df.astype(float)
         except ValueError:
@@ -488,7 +488,7 @@ class CurveAnalyze(qtw.QWidget):
         
         logging.info(df.info)
 
-        # Put on the graph
+        # ---- put on the graph
         for name, values in df.iterrows():
             curve = signal_tools.Curve(np.column_stack((df.columns, values)))
             curve.set_name_base(name)
@@ -825,7 +825,7 @@ class CurveAnalyze(qtw.QWidget):
                                         dtype=float,
                                         )
 
-            # Apply weighing
+            # ---- Apply weighing
             critical_columns = [column for column in df.columns if column >= settings.best_fit_critical_range_start_freq and column < settings.best_fit_critical_range_end_freq]
             if critical_columns:
                 weighing_normalizer = (len(df.columns) + len(critical_columns) * (settings.best_fit_critical_range_weight - 1)) / len(df.columns)
@@ -919,12 +919,11 @@ class CurveAnalyze(qtw.QWidget):
             self._settings_dialog_return)
 
         return_value = settings_dialog.exec()
+        # What does it return normally?
         if return_value:
             pass
-            # self.signal_good_beep.emit()
-
+            
     def _settings_dialog_return(self):
-        #### What to do if matplotlib style changes ####
         self.signal_graph_settings_changed.emit()
         self.signal_update_graph_request.emit()
 
@@ -953,7 +952,7 @@ class ResultTextBox(qtw.QDialog):
 
         layout.addWidget(text_box)
 
-        # Buttons
+        # ---- Buttons
         button_group = pwi.PushButtonGroup({"ok": "OK",
                                             },
                                            {},
@@ -961,7 +960,7 @@ class ResultTextBox(qtw.QDialog):
         button_group.buttons()["ok_pushbutton"].setDefault(True)
         layout.addWidget(button_group)
         
-        # Connections
+        # ---- Connections
         button_group.buttons()["ok_pushbutton"].clicked.connect(
             self.accept)
 
