@@ -10,6 +10,8 @@ from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
 from graphing import MatplotlibWidget
+# https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
+
 import signal_tools
 import personalized_widgets as pwi
 import pyperclip  # must install xclip on Linux together with this!!
@@ -23,7 +25,8 @@ from datetime import date
 import logging
 logging.basicConfig(level=logging.INFO)
 
-# https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
+# Guide for special comments
+# https://docs.spyder-ide.org/current/panes/outline.html
 
 
 today = date.today()
