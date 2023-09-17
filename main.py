@@ -784,18 +784,17 @@ class CurveAnalyze(qtw.QWidget):
 
         if settings.outlier_action == 1 and outlier_indexes:  # Hide
             self._hide_curves(indexes=outlier_indexes)
-            for curve in (lower_fence, upper_fence):
+            for curve in (lower_fence, upper_fence, curve_median):
                 curve.add_name_suffix("calculated before hiding outliers")
         elif settings.outlier_action == 2 and outlier_indexes:  # Remove
             self.remove_curves(indexes=outlier_indexes)
-            for curve in (lower_fence, upper_fence):
+            for curve in (lower_fence, upper_fence, curve_median):
                 curve.add_name_suffix("calculated before removing outliers")
 
         to_insert = {}
-        to_insert[0] = upper_fence
-        to_insert[1] = lower_fence
-        if not outlier_indexes or settings.outlier_action == 0:
-            to_insert[2] = curve_median
+        to_insert[0] = curve_median
+        to_insert[1] = upper_fence
+        to_insert[2] = lower_fence
 
         line2d_kwargs = {"color": "k", "linestyle": "--"}
 
