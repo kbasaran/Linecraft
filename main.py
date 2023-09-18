@@ -32,6 +32,7 @@ logging.basicConfig(level=logging.INFO)
 today = date.today()
 version = "Test build " + today.strftime("%Y.%m.%d")
 
+
 def find_longest_match_in_name(names: list) -> str:
     """
     https://stackoverflow.com/questions/58585052/find-most-common-substring-in-a-list-of-strings
@@ -57,7 +58,7 @@ def find_longest_match_in_name(names: list) -> str:
             match = SequenceMatcher(None, string1, string2).find_longest_match(
                 0, len(string1), 0, len(string2))
             matching_substring = string1[match.a:match.a+match.size]
-            if(matching_substring not in substring_counts):
+            if (matching_substring not in substring_counts):
                 substring_counts[matching_substring] = 1
             else:
                 substring_counts[matching_substring] += 1
@@ -104,25 +105,25 @@ class CurveAnalyze(qtw.QWidget):
         self.graph = MatplotlibWidget(settings)
         self.graph_buttons = pwi.PushButtonGroup(
             {
-            "import_curve": "Import curve",
-            "import_table": "Import table",
-            "auto_import": "Auto import",
-            "reset_indexes": "Reset indexes",
-             "reset_colors": "Reset colors",
-             "remove": "Remove",
-             "rename": "Rename",
-             "move_up": "Move up",
-             "move_to_top": "Move to top",
-             "hide": "Hide",
-             "show": "Show",
-             "set_reference": "Set reference",
-             "processing": "Processing",
-             "export_table": "Export table",
-             # "export_image": "Export image",
-             "settings": "Settings",
-             "load": "Load",
-             "save": "Save",
-             },
+                "import_curve": "Import curve",
+                "import_table": "Import table",
+                "auto_import": "Auto import",
+                "reset_indexes": "Reset indexes",
+                "reset_colors": "Reset colors",
+                "remove": "Remove",
+                "rename": "Rename",
+                "move_up": "Move up",
+                "move_to_top": "Move to top",
+                "hide": "Hide",
+                "show": "Show",
+                "set_reference": "Set reference",
+                "processing": "Processing",
+                "export_table": "Export table",
+                # "export_image": "Export image",
+                "settings": "Settings",
+                "load": "Load",
+                "save": "Save",
+            },
             {"import_curve": "Import 2D curve from clipboard",
              "auto_import": "Attempt an import whenever new data is found on the clipboard.",
              },
@@ -187,7 +188,7 @@ class CurveAnalyze(qtw.QWidget):
         self._user_input_widgets["load_pushbutton"].clicked.connect(
             self._load_clicked)
         self._user_input_widgets["save_pushbutton"].clicked.connect(
-            self._save_clicked)        
+            self._save_clicked)
         self.signal_update_graph_request.connect(self.graph.update_figure)
         self.signal_reposition_curves.connect(self.graph.change_lines_order)
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
@@ -320,13 +321,12 @@ class CurveAnalyze(qtw.QWidget):
             if not returned:
                 self.signal_good_beep.emit()
 
-
     def _rename_curve_clicked(self):
         """
         Update the curve and the screen name. Does not store the index part of the screen name.
         """
         new_names = {}
-        
+
         if self.no_curve_selected():
             self.signal_bad_beep.emit()
             return
@@ -364,7 +364,7 @@ class CurveAnalyze(qtw.QWidget):
             list_item = self.qlistwidget_for_curves.item(index)
             list_item.setText(curve.get_full_name())
             new_names[index] = curve.get_full_name()
-        
+
         self.graph.update_labels(new_names)
 
     @qtc.Slot(signal_tools.Curve)
@@ -436,9 +436,10 @@ class CurveAnalyze(qtw.QWidget):
             skiprows = None
             header = None
         else:
-            skiprows = [*range(import_settings["no_header"] - 1)] if import_settings["no_header"] > 1 else None
+            skiprows = [*range(import_settings["no_header"] - 1)
+                        ] if import_settings["no_header"] > 1 else None
             header = 0
-        
+
         if import_settings["no_index"] == 0:
             index_col = None
         else:
@@ -447,19 +448,19 @@ class CurveAnalyze(qtw.QWidget):
         # ---- read it
         try:
             df = pd.read_csv(import_file,
-                               delimiter=import_settings["delimiter"],
-                               decimal=import_settings["decimal_separator"],
-                               skiprows=skiprows,
-                               header=header,
-                               index_col=index_col,
-                               # skip_blank_lines=True,
-                               # encoding='unicode_escape',
-                               skipinitialspace=True,  # since we only have numbers
-                               )
+                             delimiter=import_settings["delimiter"],
+                             decimal=import_settings["decimal_separator"],
+                             skiprows=skiprows,
+                             header=header,
+                             index_col=index_col,
+                             # skip_blank_lines=True,
+                             # encoding='unicode_escape',
+                             skipinitialspace=True,  # since we only have numbers
+                             )
         except IndexError:
-            raise IndexError("Check your import settings and if all your rows and columns have the same length in the imported text.")
+            raise IndexError(
+                "Check your import settings and if all your rows and columns have the same length in the imported text.")
             return
-
 
         # ---- transpose if frequencies are in indexes
         if import_settings["layout_type"] == 1:
@@ -481,26 +482,35 @@ class CurveAnalyze(qtw.QWidget):
         if len(df.index) < 1:
             raise ValueError("Import does not have any curves to put on graph.")
             return
-        
+
         # ---- validate datatype
         try:
             df = df.astype(float)
         except ValueError:
             raise ValueError("Your dataset contains values that could not be interpreted as numbers.")
             return
-        
+
         logging.info(df.info)
 
         # ---- put on the graph
         for name, values in df.iterrows():
             curve = signal_tools.Curve(np.column_stack((df.columns, values)))
+            
+            if settings.import_ppo > 0:
+                x, y = curve.get_xy()
+                x_intp, y_intp = signal_tools.interpolate_to_ppo(
+                    x, y,
+                    settings.import_ppo,
+                    settings.interpolate_must_contain_hz,
+                )
+                curve.set_xy((x_intp, y_intp))
+            
             curve.set_name_base(name)
             _ = self._add_single_curve(None, curve, update_figure=False)
 
         self.signal_update_graph_request.emit()
         self.signal_successful_table_import.emit()
-        self.signal_good_beep.emit()        
-
+        self.signal_good_beep.emit()
 
     def _import_table_old(self):
 
@@ -726,7 +736,7 @@ class CurveAnalyze(qtw.QWidget):
             result_text_box = ResultTextBox(results["title"], results["result_text"], parent=self)
             result_text_box.show()
             to_beep = True
-            
+
         if to_beep:
             self.signal_good_beep.emit()
 
@@ -810,39 +820,52 @@ class CurveAnalyze(qtw.QWidget):
                                       )
             warning.exec()
             return {}
-        
+
         else:
+            # ---- Collect curves
             i_ref_curve, ref_curve = list(curves.items())[0]
             ref_freqs, ref_curve_interpolated = signal_tools.interpolate_to_ppo(
                 *ref_curve.get_xy(), settings.best_fit_calculation_resolution_ppo)
-            other_curves = {i: self.curves[i] for i in range(
+            curves_excluding_reference_curve = {i: self.curves[i] for i in range(
                 len(self.curves)) if i != i_ref_curve}
-            differences_to_ref = {curve.get_full_name(): \
-                                  np.abs(np.interp(np.log(ref_freqs), np.log(curve.get_x()), curve.get_y(), left=np.nan, right=np.nan) - ref_curve_interpolated)\
-                                      for curve in other_curves.values()}
 
-            df = pd.DataFrame.from_dict(differences_to_ref,
+            # ---- Calculate residuals squared
+            residuals_squared = {curve.get_full_name():
+                                (np.interp(np.log(ref_freqs), np.log(curve.get_x()), curve.get_y(),
+                                 left=np.nan, right=np.nan) - ref_curve_interpolated)**2
+                                for curve in curves_excluding_reference_curve.values()}
+
+            df = pd.DataFrame.from_dict(residuals_squared,
                                         orient='index',
                                         columns=ref_freqs,
                                         dtype=float,
-                                        )
+                                        )  # residuals squared. table is per frequency, per speaker.
 
-            # ---- Apply weighing
-            critical_columns = [column for column in df.columns if column >= settings.best_fit_critical_range_start_freq and column < settings.best_fit_critical_range_end_freq]
+            # ---- Apply weighting to residuals_squared
+            critical_columns = [column for column in df.columns if column >=
+                                settings.best_fit_critical_range_start_freq and column < settings.best_fit_critical_range_end_freq]
             if critical_columns:
-                weighing_normalizer = (len(df.columns) + len(critical_columns) * (settings.best_fit_critical_range_weight - 1)) / len(df.columns)
+                weighing_normalizer = (len(df.columns) + len(critical_columns) *
+                                       (settings.best_fit_critical_range_weight - 1)) / len(df.columns)
                 weighing_critical = settings.best_fit_critical_range_weight / weighing_normalizer
                 df[critical_columns].apply(lambda x: x * weighing_critical)
-                df = df / weighing_normalizer
-            else:
-                logging.warning("Critical frequency range does not contain any of the frequency points used in best fit")
+                df = df / weighing_normalizer  # residuals squared, weighted. table is per frequency, per speaker.
 
-            df.loc[:, "mean"] = df.mean(axis=1, skipna=True)
-            df.sort_values(by=["mean"], ascending=True, inplace=True)
-            result_text = f"Reference curve name: '{ref_curve.get_full_name()}'"
+            else:
+                logging.warning(
+                    "Critical frequency range does not contain any of the frequency points used in best fit")
+
+            # --- Calculate standard deviation of weighted residuals
+            df.loc[:, "Unbiased variance of weighted residuals"] = df.sum(axis=1, skipna=True) / (len(df.columns) - 1)
+            df.loc[:, "Standard deviation of weighted residuals"] = df.loc[:, "Unbiased variance of weighted residuals"]**0.5
+            df.sort_values(by=["Standard deviation of weighted residuals"], ascending=True, inplace=True)
+
+            # ---- Generate screen text
+            result_text = "-- Standard deviation of weighted residual error (Swr) --"
+            result_text += f"\nReference curve name: '{ref_curve.get_full_name()}'"
             result_text += f"\nAmount of frequency points: {len(ref_freqs)}"
             result_text += "\n\n"
-            result_text += tabulate(df[["mean"]], headers=("Item name", "Weighted average error"))
+            result_text += tabulate(df[["Standard deviation of weighted residuals"]], headers=("Item name", "Swr"))
 
         return {"title": "Best fits", "result_text": result_text}
 
@@ -924,7 +947,7 @@ class CurveAnalyze(qtw.QWidget):
         # What does it return normally?
         if return_value:
             pass
-            
+
     def _settings_dialog_return(self):
         self.signal_graph_settings_changed.emit()
         self.signal_update_graph_request.emit()
@@ -948,8 +971,9 @@ class ResultTextBox(qtw.QDialog):
         text_box.setReadOnly(True)
         text_box.setText(result_text)
 
+        family = "Monospace" if "Monospace" in qtg.QFontDatabase.families() else "Consolas"
         font = text_box.font()
-        font.setFamily("Monospace")
+        font.setFamily(family)
         text_box.setFont(font)
 
         layout.addWidget(text_box)
@@ -961,7 +985,7 @@ class ResultTextBox(qtw.QDialog):
                                            )
         button_group.buttons()["ok_pushbutton"].setDefault(True)
         layout.addWidget(button_group)
-        
+
         # ---- Connections
         button_group.buttons()["ok_pushbutton"].clicked.connect(
             self.accept)
@@ -1023,13 +1047,16 @@ class ProcessingDialog(qtw.QDialog):
         # user_form_1._user_input_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
 
         user_form_1.add_row(pwi.IntSpinBox("smoothing_resolution_ppo",
-                                           "Parts per octave resolution for the operation"),
+                                           "Parts per octave resolution for the operation",
+                                           min_max=(1, 99999),
+                                           ),
                             "Resolution (ppo)",
                             )
         user_form_1.add_row(pwi.IntSpinBox("smoothing_bandwidth",
                                            "Width of the frequency band in 1/octave."
                                            "\nFor Gaussion, bandwidth defines 2x the standard deviation of distribution."
                                            "\nFor Butterworth, bandwidth is the distance between critical frequencies, i.e. -3dB points for a first order filter.",
+                                           min_max=(1, 99999),
                                            ),
                             "Bandwidth (1/octave)",
                             )
@@ -1053,6 +1080,7 @@ class ProcessingDialog(qtw.QDialog):
         user_form_2.add_row(pwi.FloatSpinBox("outlier_fence_iqr",
                                              "Fence post for outlier detection using IQR method. Unit is the interquartile range of the data points for given frequency.",
                                              decimals=1,
+                                             min_max=(1, 99999),
                                              ),
                             "Outlier fence (IQR)",
                             )
@@ -1077,6 +1105,7 @@ class ProcessingDialog(qtw.QDialog):
 
         user_form_3.add_row(pwi.IntSpinBox("processing_interpolation_ppo",
                                            None,
+                                           min_max=(1, 99999),
                                            ),
                             "Points per octave",
                             )
@@ -1200,8 +1229,6 @@ class ImportDialog(qtw.QDialog):
                           "Column number of indexes",
                           )
 
-
-
         user_form.add_row(pwi.ComboBox("import_table_delimiter",
                                        "Delimiter character that separates the data into columns.",
                                        [(", (comma)", ","),
@@ -1244,8 +1271,10 @@ class ImportDialog(qtw.QDialog):
 
         # Connections
         button_group.buttons()["close_pushbutton"].clicked.connect(self.reject)
-        button_group.buttons()["open_file_pushbutton"].clicked.connect(partial(self._import_requested, "file", user_form))
-        button_group.buttons()["read_clipboard_pushbutton"].clicked.connect(partial(self._import_requested, "clipboard", user_form))
+        button_group.buttons()["open_file_pushbutton"].clicked.connect(
+            partial(self._import_requested, "file", user_form))
+        button_group.buttons()["read_clipboard_pushbutton"].clicked.connect(
+            partial(self._import_requested, "clipboard", user_form))
 
     def _save_form_values_to_settings(self, user_form: pwi.UserForm):
         values = user_form.get_form_values()
@@ -1255,14 +1284,13 @@ class ImportDialog(qtw.QDialog):
             else:
                 settings.update_attr(widget_name, value)
 
-
     def _import_requested(self, source, user_form: pwi.UserForm):
         # Pass to easier names
         form_values = user_form.get_form_values()
 
         no_header = form_values["import_table_no_line_headers"]
-        no_index =  form_values["import_table_no_columns"]
-        
+        no_index = form_values["import_table_no_columns"]
+
         layout_type_current_index = form_values["import_table_layout_type"]["current_index"]
         layout_type = form_values["import_table_layout_type"]["items"][layout_type_current_index][1]
 
@@ -1271,8 +1299,7 @@ class ImportDialog(qtw.QDialog):
 
         decimal_separator_current_index = form_values["import_table_decimal_separator"]["current_index"]
         decimal_separator = form_values["import_table_decimal_separator"]["items"][decimal_separator_current_index][1]
-        
-        
+
         # Do validations
         if decimal_separator == delimiter:
             raise ValueError("Cannot have the same character for delimiter and decimal separator.")
@@ -1285,11 +1312,11 @@ class ImportDialog(qtw.QDialog):
         else:
             # Validations passed. Save settings.
             self._save_form_values_to_settings(user_form)
-        
+
         user_settings = {}
         for key in ["no_header", "no_index", "layout_type", "delimiter", "decimal_separator"]:
             user_settings[key] = locals().get(key)
-        
+
         self.signal_import_table_request.emit(source, user_settings)
 
 
@@ -1355,6 +1382,7 @@ class SettingsDialog(qtw.QDialog):
         user_form.add_row(pwi.IntSpinBox("interpolate_must_contain_hz",
                                          "Frequency that will always be a point within interpolated frequency array."
                                          "\nDefault value: 1000",
+                                         min_max = (1, 999999),
                                          ),
                           "Interpolate must contain frequency (Hz)",
                           )
@@ -1455,7 +1483,7 @@ class AutoImporter(qtc.QThread):
 
 def main():
     global settings, version
-    
+
     settings = pwi.Settings()
 
     if not (app := qtw.QApplication.instance()):
