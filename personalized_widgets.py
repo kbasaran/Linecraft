@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 
 @dataclass
 class Settings:
-    version: str = '0.2.0'
+    name_and_version: str = ""
     GAMMA: float = 1.401  # adiabatic index of air
     P0: int = 101325
     RHO: float = 1.1839  # 25 degrees celcius
@@ -27,10 +27,10 @@ class Settings:
     f_max: int = 3000
     ppo: int = 48 * 8
     FS: int = 48000
-    A_beep: int = 0.5
+    A_beep: int = 0.25
     T_beep = 0.1
     freq_good_beep: float = 1175. / 2
-    freq_bad_beep: float = freq_good_beep / 4
+    freq_bad_beep: float = freq_good_beep / 4.
     last_used_folder: str = os.path.expanduser('~')
     show_legend: bool = True
     max_legend_size: int = 10
@@ -47,21 +47,20 @@ class Settings:
     matplotlib_style: str = "bmh"
     processing_interpolation_ppo: int = 96
     interpolate_must_contain_hz: int = 1000
-    graph_grids: str = "major and minor"
+    graph_grids: str = "default"
     best_fit_calculation_resolution_ppo: int = 24
     best_fit_critical_range_start_freq: int = 200
     best_fit_critical_range_end_freq: int = 5000
-    best_fit_critical_range_weight: int = 5
-    import_table_no_line_headers: int = 2
+    best_fit_critical_range_weight: int = 1
+    import_table_no_line_headers: int = 1
     import_table_no_columns: int = 1
     import_table_layout_type: int = 0
     import_table_delimiter: int = 0
     import_table_decimal_separator: int = 0
 
-
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(
-            'kbasaran', f'Speaker Stuff {self.version}')
+            "kbasaran", self.name_and_version)
         self.read_all_from_system()
 
     def update_attr(self, attr_name, new_val):

@@ -328,7 +328,6 @@ class CurveAnalyze(qtw.QWidget):
         new_names = {}
 
         if self.no_curve_selected():
-            self.signal_bad_beep.emit()
             return
 
         elif len(self.qlistwidget_for_curves.selectedItems()) > 1:
@@ -742,7 +741,8 @@ class CurveAnalyze(qtw.QWidget):
 
     def _mean_and_median_analysis(self):
         curves = self.get_selected_curves()
-        if len(curves) < 2:
+        length_curves = len(curves)
+        if length_curves < 2:
             raise ValueError(
                 "A minimum of 2 curves is needed for this analysis.")
         curve_mean, curve_median = signal_tools.mean_and_median_of_curves(
@@ -756,8 +756,8 @@ class CurveAnalyze(qtw.QWidget):
         for curve in (curve_mean, curve_median):
             curve.set_name_base(representative_base_name)
 
-        curve_mean.add_name_suffix("mean per frequency point")
-        curve_median.add_name_suffix("median per frequency point")
+        curve_mean.add_name_suffix(f"mean, {length_curves} curves")
+        curve_median.add_name_suffix(f"median, {length_curves} curves")
 
         i_insert = 0
         to_insert = {}
@@ -773,7 +773,9 @@ class CurveAnalyze(qtw.QWidget):
 
     def _outlier_detection(self):
         curves = self.get_selected_curves(as_dict=True)
-        if len(curves) < 3:
+        length_curves = len(curves)
+
+        if length_curves < 3:
             raise ValueError(
                 "A minimum of 3 curves is needed for this analysis.")
 
@@ -786,11 +788,12 @@ class CurveAnalyze(qtw.QWidget):
             [curve.get_base_name_and_suffixes() for curve in curves.values()]
         )
 
+
         for curve in (lower_fence, upper_fence, curve_median):
             curve.set_name_base(representative_base_name)
-        lower_fence.add_name_suffix(f"-{settings.outlier_fence_iqr:.1f}xIQR")
-        upper_fence.add_name_suffix(f"+{settings.outlier_fence_iqr:.1f}xIQR")
-        curve_median.add_name_suffix("median per frequency point")
+        lower_fence.add_name_suffix(f"-{settings.outlier_fence_iqr:.1f}xIQR, {length_curves} curves")
+        upper_fence.add_name_suffix(f"+{settings.outlier_fence_iqr:.1f}xIQR, {length_curves} curves")
+        curve_median.add_name_suffix(f"median, {length_curves} curves")
 
         if settings.outlier_action == 1 and outlier_indexes:  # Hide
             self._hide_curves(indexes=outlier_indexes)
@@ -1006,7 +1009,7 @@ class ProcessingDialog(qtw.QDialog):
         # dict of tuples. key is index of tab. value is tuple with (UserForm, name of function to use for its calculation)
         self.user_forms_and_recipient_functions = {}
 
-        # Statistics page
+        # ---- Statistics page
         user_form_0 = pwi.UserForm()
         # tab page is the UserForm widget
         self.tab_widget.addTab(user_form_0, "Statistics")
@@ -1015,7 +1018,7 @@ class ProcessingDialog(qtw.QDialog):
             user_form_0, "_mean_and_median_analysis")
 
         user_form_0.add_row(pwi.CheckBox("mean_selected",
-                                         "Returns a curve showing the mean value of level in dB, per frequency point.",
+                                         "Returns a curve showing the mean value of level in dB.",
                                          ),
                             "Calculate mean",
                             )
@@ -1026,7 +1029,7 @@ class ProcessingDialog(qtw.QDialog):
                             "Calculate median",
                             )
 
-        # Smoothing page
+        # ---- Smoothing page
         user_form_1 = pwi.UserForm()
         # tab page is the UserForm widget
         self.tab_widget.addTab(user_form_1, "Smoothing")
@@ -1069,7 +1072,7 @@ class ProcessingDialog(qtw.QDialog):
         user_form_1._user_input_widgets["smoothing_type"].currentIndexChanged.connect(
             set_availability_of_resolution_option)
 
-        # Outlier detection page
+        # ---- Outlier detection page
         user_form_2 = pwi.UserForm()
         # tab page is the UserForm widget
         self.tab_widget.addTab(user_form_2, "Outliers")
@@ -1095,7 +1098,7 @@ class ProcessingDialog(qtw.QDialog):
                             "Action on outliers",
                             )
 
-        # Interpolation page
+        # ---- Interpolation page
         user_form_3 = pwi.UserForm()
         # tab page is the UserForm widget
         self.tab_widget.addTab(user_form_3, "Interpolation")
@@ -1110,7 +1113,7 @@ class ProcessingDialog(qtw.QDialog):
                             "Points per octave",
                             )
 
-        # Show best fits
+        # ---- Show best fits
         user_form_4 = pwi.UserForm()
         # tab page is the UserForm widget
         self.tab_widget.addTab(user_form_4, "Best fit to current")
@@ -1141,7 +1144,7 @@ class ProcessingDialog(qtw.QDialog):
                             "Critical range weight",
                             )
 
-        # Buttons for the dialog - common to self and not per tab
+        # ---- Common buttons for the dialog
         button_group = pwi.PushButtonGroup({"run": "Run",
                                             "cancel": "Cancel",
                                             },
@@ -1150,7 +1153,7 @@ class ProcessingDialog(qtw.QDialog):
         button_group.buttons()["run_pushbutton"].setDefault(True)
         layout.addWidget(button_group)
 
-        # Update parameters from settings
+        # ---- Update parameters from settings
         self.tab_widget.setCurrentIndex(settings.processing_selected_tab)
         for i in range(self.tab_widget.count()):
             user_form = self.tab_widget.widget(i)
@@ -1163,7 +1166,7 @@ class ProcessingDialog(qtw.QDialog):
                 else:
                     widget.setValue(saved_setting)
 
-        # Connections
+        # ---- Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
             self.reject)
         button_group.buttons()["run_pushbutton"].clicked.connect(
@@ -1201,7 +1204,7 @@ class ImportDialog(qtw.QDialog):
         layout = qtw.QVBoxLayout(self)
         self.setWindowTitle("Import table with curve(s)")
 
-        # Form
+        # ---- Form
         user_form = pwi.UserForm()
         layout.addWidget(user_form)
 
@@ -1250,7 +1253,7 @@ class ImportDialog(qtw.QDialog):
                           "Decimal separator",
                           )
 
-        # Buttons
+        # ---- Buttons
         button_group = pwi.PushButtonGroup({"open_file": "Open file..",
                                             "read_clipboard": "Read clipboard",
                                             "close": "Close",
@@ -1329,7 +1332,7 @@ class SettingsDialog(qtw.QDialog):
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         layout = qtw.QVBoxLayout(self)
 
-        # Form
+        # ---- Form
         user_form = pwi.UserForm()
         layout.addWidget(user_form)
 
@@ -1396,7 +1399,7 @@ class SettingsDialog(qtw.QDialog):
                           "Beep amplitude",
                           )
 
-        # Buttons
+        # ---- Buttons
         button_group = pwi.PushButtonGroup({"save": "Save",
                                             "cancel": "Cancel",
                                             },
@@ -1405,7 +1408,7 @@ class SettingsDialog(qtw.QDialog):
         button_group.buttons()["save_pushbutton"].setDefault(True)
         layout.addWidget(button_group)
 
-        # read values from settings
+        # ---- read values from settings
         for widget_name, widget in user_form._user_input_widgets.items():
             saved_setting = getattr(settings, widget_name)
             if isinstance(widget, qtw.QCheckBox):
@@ -1484,7 +1487,7 @@ class AutoImporter(qtc.QThread):
 def main():
     global settings, version
 
-    settings = pwi.Settings()
+    settings = pwi.Settings(name_and_version="kbasaran - Linecraft test build")
 
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
