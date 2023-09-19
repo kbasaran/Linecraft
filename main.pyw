@@ -986,7 +986,7 @@ class ResultTextBox(qtw.QDialog):
 
         layout = qtw.QVBoxLayout(self)
         self.setWindowTitle(title)
-        self.setMinimumSize(900, 600)
+        self.setMinimumSize(700, 400)
         text_box = qtw.QTextEdit()
         text_box.setReadOnly(True)
         text_box.setText(result_text)
