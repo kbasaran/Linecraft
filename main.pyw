@@ -1,3 +1,20 @@
+# Linecraft - Frequency response display and statistics tool
+# Copyright (C) 2023 - Kerem Basaran
+# kbasaran@gmail.com - https://github.com/kbasaran
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import os
 import sys
 import numpy as np
@@ -1018,13 +1035,15 @@ class ProcessingDialog(qtw.QDialog):
             user_form_0, "_mean_and_median_analysis")
 
         user_form_0.add_row(pwi.CheckBox("mean_selected",
-                                         "Returns a curve showing the mean value of level in dB.",
+                                         "Returns a curve showing the mean value of level in dB."
+                                         "Preferred method of estimating representtive curve when sample population is small and symmetrically distributed.",
                                          ),
                             "Calculate mean",
                             )
 
         user_form_0.add_row(pwi.CheckBox("median_selected",
-                                         "Returns a curve showing the median value per frequency point.",
+                                         "Returns a curve showing the median value per frequency point."
+                                         "Preferred method of estimating representtive curve when sample population is large and/or skewed.",
                                          ),
                             "Calculate median",
                             )
