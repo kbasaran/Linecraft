@@ -1,0 +1,3 @@
+[submodule "generic-tools"]
+	path = include/generic-tools
+	url = git@github.com:kbasaran/generic-tools.git
