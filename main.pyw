@@ -397,7 +397,7 @@ class CurveAnalyze(qtw.QWidget):
 
     @qtc.Slot(signal_tools.Curve)
     def import_single_curve(self, curve: signal_tools.Curve = None):
-        if curve in (None, False):
+        if not curve:
             curve = self._read_clipboard()
 
         if settings.import_ppo > 0:
@@ -422,16 +422,16 @@ class CurveAnalyze(qtw.QWidget):
                 self.signal_bad_beep.emit()
                 return
             else:
-                indexes_to_act_on = indexes
+                indexes_to_remove = indexes
 
-        elif indexes in (False, None) and self.no_curve_selected():
+        elif not indexes and self.no_curve_selected():
             return
 
-        elif indexes in (False, None):
-            indexes_to_act_on = self.get_selected_curve_indexes()
+        elif not indexes:
+            indexes_to_remove = self.get_selected_curve_indexes()
 
-        self.graph.remove_line2d(indexes_to_act_on)
-        for i in reversed(indexes_to_act_on):
+        self.graph.remove_line2d(indexes_to_remove)
+        for i in reversed(indexes_to_remove):
             self.qlistwidget_for_curves.takeItem(i)
             self.curves.pop(i)
 
