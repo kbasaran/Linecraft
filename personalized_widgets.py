@@ -26,7 +26,7 @@ from PySide6 import QtGui as qtg
 from dataclasses import dataclass, fields
 import sounddevice as sd
 import numpy as np
-import signal_tools
+from generictools import signal_tools
 
 import logging
 logging.basicConfig(level=logging.INFO)

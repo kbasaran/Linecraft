@@ -27,10 +27,10 @@ from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
-from graphing import MatplotlibWidget
+from generictools.graphing_widget import MatplotlibWidget
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
-import signal_tools
+from generictools import signal_tools
 import personalized_widgets as pwi
 import pyperclip  # must install xclip on Linux together with this!!
 from functools import partial
