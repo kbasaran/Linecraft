@@ -1,6 +1,7 @@
 # Linecraft - Frequency response display and statistics tool
 # Copyright (C) 2023 - Kerem Basaran
-# kbasaran@gmail.com - https://github.com/kbasaran
+# https://github.com/kbasaran
+__email__ = "kbasaran@gmail.com"
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
