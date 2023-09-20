@@ -8,6 +8,7 @@ from scipy.ndimage import gaussian_filter
 from scipy import signal as sig
 import time
 
+"ere"
 
 class TestSignal():
     """
