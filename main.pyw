@@ -408,6 +408,7 @@ class CurveAnalyze(qtw.QWidget):
                 settings.interpolate_must_contain_hz,
             )
             curve.set_xy((x_intp, y_intp))
+        print(curve)
 
         if curve.is_curve():
             i_insert = self._add_single_curve(None, curve)
@@ -436,7 +437,7 @@ class CurveAnalyze(qtw.QWidget):
             self.curves.pop(i)
 
     def _import_table_clicked(self):
-        import_table_dialog = ImportDialog()
+        import_table_dialog = ImportDialog(parent=self)
         import_table_dialog.signal_import_table_request.connect(
             self._import_table_requested)
         self.signal_successful_table_import.connect(import_table_dialog.reject)
@@ -494,23 +495,21 @@ class CurveAnalyze(qtw.QWidget):
         if import_settings["layout_type"] == 1:
             df = df.transpose()
 
-        # ---- validate headers
+        # ---- validate curve and header validity
         try:
             signal_tools.check_if_sorted_and_valid(df.columns)
             df.columns = df.columns.astype(float)
         except ValueError as e:
-            raise e
+            logging.info(str(e))
+            self.signal_bad_beep.emit()
             return
 
-        # ---- validate size
-        if len(df.columns) < 2:
-            raise ValueError("Curve needs to have more than one frequency point."
-                             f"Frequency points: {df.columns}")
-            return
+        # ---- Validate size
         if len(df.index) < 1:
-            raise ValueError("Import does not have any curves to put on graph.")
+            logging.info("Import does not have any curves to put on graph.")
+            self.signal_bad_beep.emit()
             return
-
+    
         # ---- validate datatype
         try:
             df = df.astype(float)
@@ -608,7 +607,7 @@ class CurveAnalyze(qtw.QWidget):
 
     def _auto_importer_status_toggle(self, checked: bool):
         if checked == 1:
-            self.auto_importer = AutoImporter()
+            self.auto_importer = AutoImporter(self)
             self.auto_importer.signal_new_import.connect(
                 self.import_single_curve)
             self.auto_importer.start()
@@ -742,7 +741,7 @@ class CurveAnalyze(qtw.QWidget):
             return
 
         processing_dialog = ProcessingDialog(
-            self.get_selected_curves())
+            self.get_selected_curves(), parent=self)
         processing_dialog.signal_processing_request.connect(
             self._processing_dialog_return)
 
@@ -971,7 +970,7 @@ class CurveAnalyze(qtw.QWidget):
         return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
 
     def _open_settings_dialog(self):
-        settings_dialog = SettingsDialog()
+        settings_dialog = SettingsDialog(parent=self)
         settings_dialog.signal_settings_changed.connect(
             self._settings_dialog_return)
 
@@ -1027,8 +1026,8 @@ class ProcessingDialog(qtw.QDialog):
     global settings
     signal_processing_request = qtc.Signal(str)
 
-    def __init__(self, curves):
-        super().__init__()
+    def __init__(self, curves, parent=None):
+        super().__init__(parent=parent)
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         self.setWindowTitle("Processing Menu")
         layout = qtw.QVBoxLayout(self)
@@ -1358,8 +1357,8 @@ class SettingsDialog(qtw.QDialog):
     global settings
     signal_settings_changed = qtc.Signal()
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         layout = qtw.QVBoxLayout(self)
 
@@ -1498,19 +1497,21 @@ class SettingsDialog(qtw.QDialog):
 
 
 class AutoImporter(qtc.QThread):
-    global settings
     signal_new_import = qtc.Signal(signal_tools.Curve)
-
-    # not overriding the __init__ will run the inherited object's __init__
+    
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
 
     def run(self):
         while not self.isInterruptionRequested():
-            cb_data = pyperclip.waitForNewPaste()
-            # print("\nClipboard read:" + "\n" + str(type(cb_data)) + "\n" + cb_data)
             try:
+                cb_data = pyperclip.waitForNewPaste(1)
+                # print("\nClipboard read:" + "\n" + str(type(cb_data)) + "\n" + cb_data)
                 new_curve = signal_tools.Curve(cb_data)
                 if new_curve.is_curve():
                     self.signal_new_import.emit(new_curve)
+            except pyperclip.PyperclipTimeoutException:
+                pass
             except Exception as e:
                 logging.warning(e)
 
