@@ -81,10 +81,13 @@ def find_longest_match_in_name(names: list) -> str:
             else:
                 substring_counts[matching_substring] += 1
 
-    # max looks at the output of get method
+    # max() looks at the output of get method
     max_occurring_key = max(substring_counts, key=substring_counts.get)
 
-    return max_occurring_key.strip().strip("-").strip().strip("-").strip()
+    for char in " - - ":
+        max_occurring_key = max_occurring_key.strip(char)
+
+    return max_occurring_key
 
 
 class CurveAnalyze(qtw.QWidget):
@@ -107,7 +110,7 @@ class CurveAnalyze(qtw.QWidget):
         self._make_connections()
 
     def keyPressEvent(self, keyEvent):
-        # overwriting method inherited from class
+        # overwriting method that was inherited from class
         # Sequence names: https://doc.qt.io/qtforpython-6/PySide6/QtGui/QKeySequence.html
         if keyEvent.matches(qtg.QKeySequence.Delete):
             self.remove_curves()
@@ -115,11 +118,11 @@ class CurveAnalyze(qtw.QWidget):
             self.qlistwidget_for_curves.setCurrentRow(-1)
 
     def _create_core_objects(self):
-        self._user_input_widgets = dict()
-        self.curves = []
-        self.reference_curve = None
+        self._user_input_widgets = dict()  # a dictionary for QWidgets that users interact with
+        self.curves = []  # frequency response curves
 
     def _create_widgets(self):
+        # ---- Create graph and buttons widget
         self.graph = MatplotlibWidget(settings)
         self.graph_buttons = pwi.PushButtonGroup(
             {
@@ -146,14 +149,16 @@ class CurveAnalyze(qtw.QWidget):
              "auto_import": "Attempt an import whenever new data is found on the clipboard.",
              },
         )
+        # Add the widgets that users interact with into the dictionary
         self.graph_buttons.user_values_storage(self._user_input_widgets)
-        self.graph_buttons.user_values_storage(self._user_input_widgets)
+
+        # ---- Set types and states for buttons
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         self._user_input_widgets["set_reference_pushbutton"].setCheckable(True)
         self._user_input_widgets["load_pushbutton"].setEnabled(False)
         self._user_input_widgets["save_pushbutton"].setEnabled(False)
-        # self._user_input_widgets["export_image_pushbutton"].setEnabled(False)
 
+        # ---- Create list widget
         self.qlistwidget_for_curves = qtw.QListWidget()
         self.qlistwidget_for_curves.setSelectionMode(
             qtw.QAbstractItemView.ExtendedSelection)
@@ -214,7 +219,7 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_graph_settings_changed.connect(self.graph.set_grid_type)
 
     def _export_table(self):
-        """Export selected curves to clipboard as a table."""
+        """Paste selected curve(s) to clipboard in a table."""
         if self.no_curve_selected():
             return
         if len(self.qlistwidget_for_curves.selectedItems()) > 1:
@@ -248,6 +253,7 @@ class CurveAnalyze(qtw.QWidget):
             logging.debug("Unrecognized curve object")
 
     def get_selected_curve_indexes(self) -> list:
+        """Get a list of indexes for the curves currently selected in the list widget"""
         selected_list_items = self.qlistwidget_for_curves.selectedItems()
         indexes = [self.qlistwidget_for_curves.row(
             list_item) for list_item in selected_list_items]
@@ -273,6 +279,7 @@ class CurveAnalyze(qtw.QWidget):
             return True
 
     def _move_curve_up(self, i_insert: int):
+        """Move curve up to index 'i_insert'"""
         selected_indexes_and_curves = self.get_selected_curves(as_dict=True)
 
         new_indexes = [*range(len(self.curves))]
@@ -281,12 +288,14 @@ class CurveAnalyze(qtw.QWidget):
             # i_within_selected is the index within the selected curves
             # i_before is the index on the complete curves list
             i_after = i_insert + i_within_selected
+            if not i_after < i_before:
+                raise IndexError("This function can only move the item higher up in the list.")
 
-            # do the self.curves list (single source of truth)
+            # update the self.curves list (single source of truth)
             curve = self.curves.pop(i_before)
             self.curves.insert(i_after, curve)
 
-            # do the QListWidget
+            # update the QListWidget
             new_list_item = qtw.QListWidgetItem(curve.get_full_name())
             print(curve.get_full_name())
             if not curve.is_visible():
@@ -297,7 +306,7 @@ class CurveAnalyze(qtw.QWidget):
             self.qlistwidget_for_curves.insertItem(i_after, new_list_item)
             self.qlistwidget_for_curves.takeItem(i_before + 1)
 
-            # do the changes dictionary to send to the graph
+            # update the changes dictionary to send to the graph
             new_indexes.insert(i_after, new_indexes.pop(i_before))
 
         # send the changes dictionary to the graph
@@ -319,6 +328,7 @@ class CurveAnalyze(qtw.QWidget):
         self.qlistwidget_for_curves.setCurrentRow(-1)
 
     def _reset_indexes(self):
+        """Reset the indexes that are stored in the signal_tools.Curve objects and shown as prefix of the name"""
         if not len(self.curves):
             self.signal_bad_beep.emit()
         else:
@@ -332,6 +342,7 @@ class CurveAnalyze(qtw.QWidget):
                 self.signal_good_beep.emit()
 
     def _reset_colors_of_curves(self):
+        """Reset the colors for the graph curves with ordered standard colors"""
         if not len(self.curves):
             self.signal_bad_beep.emit()
         else:
@@ -340,14 +351,13 @@ class CurveAnalyze(qtw.QWidget):
                 self.signal_good_beep.emit()
 
     def _rename_curve_clicked(self):
-        """
-        Update the curve and the screen name. Does not store the index part of the screen name.
-        """
+        """Update the base name and suffix. Does not modify the index part (the prefix in Curve object)."""
         new_names = {}
 
         if self.no_curve_selected():
             return
 
+        # ---- Multiple curves. Can only add a common suffix.
         elif len(self.qlistwidget_for_curves.selectedItems()) > 1:
             indexes_and_curves = self.get_selected_curves(as_dict=True)
             text, ok = qtw.QInputDialog.getText(self,
@@ -364,6 +374,7 @@ class CurveAnalyze(qtw.QWidget):
                 list_item.setText(curve.get_full_name())
                 new_names[index] = curve.get_full_name()
 
+        # ---- Single curve. Edit base name and suffixes into a new base name
         else:
             index = self.qlistwidget_for_curves.currentRow()
             curve = self.curves[index]
@@ -1504,6 +1515,10 @@ class AutoImporter(qtc.QThread):
                 logging.warning(e)
 
 
+def test_and_demo(window):
+    pass
+
+
 def main():
     global settings, version
 
@@ -1526,20 +1541,10 @@ def main():
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
-    # mw._add_single_curve(None, signal_tools.Curve(
-    #     np.array([[125, 250, 500], [50, 50, 50]])))
-    # mw._add_single_curve(None, signal_tools.Curve(
-    #     np.array([[125, 250, 500], [70, 85, 70]])))
-    # mw._add_single_curve(None, signal_tools.Curve(
-    #     np.array([[125, 250, 500], [75, 70, 80]])))
-    # mw._add_single_curve(None, signal_tools.Curve(
-    #     np.array([[125, 250, 500], [60, 75, 90]])))
-    # mw._add_single_curve(None, signal_tools.Curve(
-    #     np.array([[125, 250, 500], [90, 70, 65]])))
-
     mw.show()
     app.exec()
 
+    test_and_demo(mw)
 
 if __name__ == "__main__":
     main()
