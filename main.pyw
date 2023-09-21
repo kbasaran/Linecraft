@@ -768,17 +768,17 @@ class CurveAnalyze(qtw.QWidget):
             self.signal_good_beep.emit()
 
     def _mean_and_median_analysis(self):
-        curves = self.get_selected_curves()
-        length_curves = len(curves)
+        selected_curves = self.get_selected_curves()
+        length_curves = len(selected_curves)
         if length_curves < 2:
             raise ValueError(
                 "A minimum of 2 curves is needed for this analysis.")
         curve_mean, curve_median = signal_tools.mean_and_median_of_curves(
-            [curve.get_xy() for curve in curves]
+            [curve.get_xy() for curve in selected_curves]
         )
 
         representative_base_name = find_longest_match_in_name(
-            [curve.get_base_name_and_suffixes() for curve in curves]
+            [curve.get_base_name_and_suffixes() for curve in selected_curves]
         )
 
         for curve in (curve_mean, curve_median):
@@ -800,20 +800,20 @@ class CurveAnalyze(qtw.QWidget):
         return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
 
     def _outlier_detection(self):
-        curves = self.get_selected_curves(as_dict=True)
-        length_curves = len(curves)
+        selected_curves = self.get_selected_curves(as_dict=True)
+        length_curves = len(selected_curves)
 
         if length_curves < 3:
             raise ValueError(
                 "A minimum of 3 curves is needed for this analysis.")
 
         lower_fence, curve_median, upper_fence, outlier_indexes = signal_tools.iqr_analysis(
-            {i: curve.get_xy() for i, curve in curves.items()},
+            {i: curve.get_xy() for i, curve in selected_curves.items()},
             settings.outlier_fence_iqr,
         )
 
         representative_base_name = find_longest_match_in_name(
-            [curve.get_base_name_and_suffixes() for curve in curves.values()]
+            [curve.get_base_name_and_suffixes() for curve in selected_curves.values()]
         )
 
 
@@ -842,8 +842,8 @@ class CurveAnalyze(qtw.QWidget):
         return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
 
     def _show_best_fits(self):
-        curves = self.get_selected_curves(as_dict=True)
-        if len(curves) != 1:
+        selected_curves = self.get_selected_curves(as_dict=True)
+        if len(selected_curves) != 1:
             warning = qtw.QMessageBox(qtw.QMessageBox.Warning,
                                       "Multiple curves found in selection",
                                       "For this operation you need to choose a single curve from the list.",
@@ -854,17 +854,15 @@ class CurveAnalyze(qtw.QWidget):
 
         else:
             # ---- Collect curves
-            i_ref_curve, ref_curve = list(curves.items())[0]
+            i_ref_curve, ref_curve = list(selected_curves.items())[0]
             ref_freqs, ref_curve_interpolated = signal_tools.interpolate_to_ppo(
                 *ref_curve.get_xy(), settings.best_fit_calculation_resolution_ppo)
-            curves_excluding_reference_curve = {i: self.curves[i] for i in range(
-                len(self.curves)) if i != i_ref_curve}
 
             # ---- Calculate residuals squared
             residuals_squared = {curve.get_full_name():
                                 (np.interp(np.log(ref_freqs), np.log(curve.get_x()), curve.get_y(),
                                  left=np.nan, right=np.nan) - ref_curve_interpolated)**2
-                                for curve in curves_excluding_reference_curve.values()}
+                                for curve in self.curves}
 
             df = pd.DataFrame.from_dict(residuals_squared,
                                         orient='index',
@@ -893,24 +891,23 @@ class CurveAnalyze(qtw.QWidget):
 
             # ---- Generate screen text
             result_text = "-- Standard deviation of weighted residual error (Swr) --"
-            result_text += f"\nReference curve name: '{ref_curve.get_full_name()}'"
-            result_text += f"\nAmount of frequency points: {len(ref_freqs)}"
+            result_text += f"\nReference: {ref_curve.get_name_prefix()}    Amount of frequency points: {len(ref_freqs)}"
             result_text += "\n\n"
             result_text += tabulate(df[["Standard deviation of weighted residuals"]], headers=("Item name", "Swr"))
 
         return {"title": "Best fits", "result_text": result_text}
 
     def _interpolate_curves(self):
-        curves = self.get_selected_curves(as_dict=True)
+        selected_curves = self.get_selected_curves(as_dict=True)
 
         to_insert = {}
 
-        for i_curve, curve in curves.items():
+        for i_curve, curve in selected_curves.items():
             xy = signal_tools.interpolate_to_ppo(
                 *curve.get_xy(), settings.processing_interpolation_ppo)
 
             new_curve = signal_tools.Curve(xy)
-            new_curve.set_name_base(curves[i_curve].get_name_base())
+            new_curve.set_name_base(curve.get_name_base())
             for suffix in curve.get_name_suffixes():
                 new_curve.add_name_suffix(suffix)
             new_curve.add_name_suffix(
@@ -922,11 +919,11 @@ class CurveAnalyze(qtw.QWidget):
         return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
 
     def _smoothen_curves(self):
-        curves = self.get_selected_curves(as_dict=True)
+        selected_curves = self.get_selected_curves(as_dict=True)
 
         to_insert = {}
 
-        for i_curve, curve in curves.items():
+        for i_curve, curve in selected_curves.items():
 
             if settings.smoothing_type == 0:
                 xy = signal_tools.smooth_log_spaced_curve_butterworth_fast(*curve.get_xy(),
@@ -958,7 +955,7 @@ class CurveAnalyze(qtw.QWidget):
                     "This smoothing type is not available")
 
             new_curve = signal_tools.Curve(xy)
-            new_curve.set_name_base(curves[i_curve].get_name_base())
+            new_curve.set_name_base(curve.get_name_base())
             for suffix in curve.get_name_suffixes():
                 new_curve.add_name_suffix(suffix)
             new_curve.add_name_suffix(
@@ -1026,7 +1023,7 @@ class ProcessingDialog(qtw.QDialog):
     global settings
     signal_processing_request = qtc.Signal(str)
 
-    def __init__(self, curves, parent=None):
+    def __init__(self, selected_curves, parent=None):
         super().__init__(parent=parent)
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         self.setWindowTitle("Processing Menu")
