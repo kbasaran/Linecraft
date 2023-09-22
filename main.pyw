@@ -218,6 +218,8 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_flash_curve.connect(self.graph.flash_curve)
         self.signal_graph_settings_changed.connect(self.graph.set_grid_type)
         self.graph.signal_reference_curve_state.connect(self._user_input_widgets["set_reference_pushbutton"].setChecked)
+        self.graph.signal_reference_curve_state.connect(lambda x: self._user_input_widgets["processing_pushbutton"].setEnabled(not x))
+        self.graph.signal_reference_curve_state.connect(lambda x: self._user_input_widgets["export_table_pushbutton"].setEnabled(not x))
 
     def _export_table(self):
         """Paste selected curve(s) to clipboard in a table."""
@@ -244,7 +246,7 @@ class CurveAnalyze(qtw.QWidget):
         pd.DataFrame(xy_export).to_clipboard(
             excel=True, index=False, header=False)
 
-    def _read_clipboard(self):
+    def _get_curve_from_clipboard(self):
         """Read a signal_tools.Curve object from clipboard."""
         data = pyperclip.paste()
         new_curve = signal_tools.Curve(data)
@@ -252,6 +254,7 @@ class CurveAnalyze(qtw.QWidget):
             return new_curve
         else:
             logging.debug("Unrecognized curve object")
+            return None
 
     def get_selected_curve_indexes(self) -> list:
         """Get a list of indexes for the curves currently selected in the list widget"""
@@ -399,7 +402,12 @@ class CurveAnalyze(qtw.QWidget):
     @qtc.Slot(signal_tools.Curve)
     def import_single_curve(self, curve: signal_tools.Curve = None):
         if not curve:
-            curve = self._read_clipboard()
+            clipboard_curve = self._get_curve_from_clipboard()
+            if clipboard_curve is None:
+                self.signal_bad_beep.emit()
+                return
+            else:
+                curve = clipboard_curve
 
         if settings.import_ppo > 0:
             x, y = curve.get_xy()
@@ -409,7 +417,6 @@ class CurveAnalyze(qtw.QWidget):
                 settings.interpolate_must_contain_hz,
             )
             curve.set_xy((x_intp, y_intp))
-        print(curve)
 
         if curve.is_curve():
             i_insert = self._add_single_curve(None, curve)
@@ -642,8 +649,7 @@ class CurveAnalyze(qtw.QWidget):
             else:
                 # multiple selections
                 self.signal_bad_beep.emit()
-                self._user_input_widgets["set_reference_pushbutton"].setChecked(
-                    False)
+
 
         elif not checked:
             # find back the reference curve
@@ -668,8 +674,6 @@ class CurveAnalyze(qtw.QWidget):
                 # Update graph
                 self.graph.toggle_reference_curve(None)
 
-            # Release processing options
-            self._user_input_widgets["processing_pushbutton"].setEnabled(True)
 
     def _add_single_curve(self, i: int, curve: signal_tools.Curve, update_figure: bool = True, line2d_kwargs={}):
         if curve.is_curve():
