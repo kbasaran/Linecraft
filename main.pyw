@@ -164,16 +164,16 @@ class CurveAnalyze(qtw.QWidget):
             qtw.QAbstractItemView.ExtendedSelection)
         # self.qlistwidget_for_curves.setDragDropMode(qtw.QAbstractItemView.InternalMove)  # crashes the application
 
-        # set size policies
-        self.graph.setSizePolicy(
-            qtw.QSizePolicy.MinimumExpanding, qtw.QSizePolicy.MinimumExpanding)
-
     def _place_widgets(self):
         self.setLayout(qtw.QVBoxLayout())
         # self.layout().setSpacing(0)
         self.layout().addWidget(self.graph, 3)
         self.layout().addWidget(self.graph_buttons)
         self.layout().addWidget(self.qlistwidget_for_curves, 1)
+        
+        # set size policies
+        self.graph.setSizePolicy(
+            qtw.QSizePolicy.Expanding, qtw.QSizePolicy.MinimumExpanding)
 
     def _make_connections(self):
         self._user_input_widgets["remove_pushbutton"].clicked.connect(
@@ -247,6 +247,7 @@ class CurveAnalyze(qtw.QWidget):
 
         pd.DataFrame(xy_export).to_clipboard(
             excel=True, index=False, header=False)
+        self.signal_good_beep.emit()
 
     def _get_curve_from_clipboard(self):
         """Read a signal_tools.Curve object from clipboard."""
@@ -320,7 +321,7 @@ class CurveAnalyze(qtw.QWidget):
 
     def move_up_1(self):
         if self.no_curve_selected():
-            self.signal_bad_beep.emit()
+            return
         selected_indexes = self.get_selected_curve_indexes()
         i_insert = max(0, selected_indexes[0] - 1)
         self._move_curve_up(i_insert)
@@ -329,7 +330,7 @@ class CurveAnalyze(qtw.QWidget):
 
     def move_to_top(self):
         if self.no_curve_selected():
-            self.signal_bad_beep.emit()
+            return
         self._move_curve_up(0)
         self.qlistwidget_for_curves.setCurrentRow(-1)
 
