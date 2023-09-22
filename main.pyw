@@ -162,8 +162,8 @@ class CurveAnalyze(qtw.QMainWindow):
         menu_bar = self.menuBar()
         
         file_menu = menu_bar.addMenu("File")
-        load_action = file_menu.addAction("Load..", self._load_clicked)
-        save_action = file_menu.addAction("Save..", self._save_clicked)
+        load_action = file_menu.addAction("Load..", self._load_or_save_clicked)
+        save_action = file_menu.addAction("Save..", self._load_or_save_clicked)
 
         edit_menu = menu_bar.addMenu("Edit")
         settings_action = edit_menu.addAction("Settings..", self._open_settings_dialog)
@@ -239,18 +239,16 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def _export_table(self):
         """Paste selected curve(s) to clipboard in a table."""
-        if self.no_curve_selected():
+        if self.return_false_and_beep_if_no_curve_selected():
             return
-        if len(self.qlistwidget_for_curves.selectedItems()) > 1:
+        elif len(self.qlistwidget_for_curves.selectedItems()) > 1:
             message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                           "Feature not Implemented",
                                           "Can only export one curve at a time.",
                                           )
             message_box.setStandardButtons(qtw.QMessageBox.Ok)
-            returned = message_box.exec()
-
-            if returned:
-                return
+            message_box.exec()
+            return
         else:
             curve = self.get_selected_curves()[0]
 
@@ -300,7 +298,7 @@ class CurveAnalyze(qtw.QMainWindow):
         selected_indexes = self.get_selected_curve_indexes()
         return len(selected_indexes)
 
-    def no_curve_selected(self) -> bool:
+    def return_false_and_beep_if_no_curve_selected(self) -> bool:
         if self.qlistwidget_for_curves.selectedItems():
             return False
         else:
@@ -342,7 +340,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.signal_reposition_curves.emit(new_indexes)
 
     def move_up_1(self):
-        if self.no_curve_selected():
+        if self.return_false_and_beep_if_no_curve_selected():
             return
         selected_indexes = self.get_selected_curve_indexes()
         i_insert = max(0, selected_indexes[0] - 1)
@@ -351,7 +349,7 @@ class CurveAnalyze(qtw.QMainWindow):
             self.qlistwidget_for_curves.setCurrentRow(i_insert)
 
     def move_to_top(self):
-        if self.no_curve_selected():
+        if self.return_false_and_beep_if_no_curve_selected():
             return
         self._move_curve_up(0)
         self.qlistwidget_for_curves.setCurrentRow(-1)
@@ -383,7 +381,7 @@ class CurveAnalyze(qtw.QMainWindow):
         """Update the base name and suffix. Does not modify the index part (the prefix in Curve object)."""
         new_names = {}
 
-        if self.no_curve_selected():
+        if self.return_false_and_beep_if_no_curve_selected():
             return
 
         # ---- Multiple curves. Can only add a common suffix.
@@ -459,7 +457,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 indexes_to_remove = indexes
 
         elif not indexes:
-            if self.no_curve_selected():
+            if self.return_false_and_beep_if_no_curve_selected():
                 return
             else:
                 indexes_to_remove = self.get_selected_curve_indexes()
@@ -522,6 +520,9 @@ class CurveAnalyze(qtw.QMainWindow):
         except IndexError:
             raise IndexError(
                 "Check your import settings and if all your rows and columns have the same length in the imported text.")
+            return
+        except pd.errors.EmptyDataError:
+            self.signal_bad_beep.emit()
             return
 
         # ---- transpose if frequencies are in indexes
@@ -660,7 +661,7 @@ class CurveAnalyze(qtw.QMainWindow):
     def _hide_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
             indexes_and_curves = {i: self.curves[i] for i in indexes}
-        elif self.no_curve_selected():
+        elif self.return_false_and_beep_if_no_curve_selected():
             return
         else:
             indexes_and_curves = self.get_selected_curves(as_dict=True)
@@ -677,7 +678,7 @@ class CurveAnalyze(qtw.QMainWindow):
     def _show_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
             indexes_and_curves = {i: self.curves[i] for i in indexes}
-        elif self.no_curve_selected():
+        elif self.return_false_and_beep_if_no_curve_selected():
             return
         else:
             indexes_and_curves = self.get_selected_curves(as_dict=True)
@@ -702,7 +703,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.graph.hide_show_line2d(visibility_states)
 
     def _open_processing_dialog(self):
-        if self.no_curve_selected():
+        if self.return_false_and_beep_if_no_curve_selected():
             return
 
         processing_dialog = ProcessingDialog(
@@ -946,11 +947,13 @@ class CurveAnalyze(qtw.QMainWindow):
         self.signal_update_graph_request.emit()
         self.signal_good_beep.emit()
 
-    def _load_clicked(self):
-        self.signal_bad_beep.emit()
-
-    def _save_clicked(self):
-        self.signal_bad_beep.emit()
+    def _load_or_save_clicked(self):
+        message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
+                                      "Feature not Implemented",
+                                      "Save and load not available at this moment.",
+                                      )
+        message_box.setStandardButtons(qtw.QMessageBox.Ok)
+        message_box.exec()
 
     def _open_about_menu(self):
         result_text = "\n".join([
@@ -971,6 +974,9 @@ class CurveAnalyze(qtw.QMainWindow):
         "",
         "You should have received a copy of the GNU General Public License",
         "along with this program.  If not, see <https://www.gnu.org/licenses/>.",
+        "",
+        "This software is built using Qt for Python.",
+        "https://www.qt.io/",
         ])
         text_box = ResultTextBox("About", result_text, monospace=False)
         text_box.exec()
@@ -982,7 +988,7 @@ class ResultTextBox(qtw.QDialog):
 
         layout = qtw.QVBoxLayout(self)
         self.setWindowTitle(title)
-        self.setMinimumSize(700, 400)
+        self.setMinimumSize(700, 440)
         text_box = qtw.QTextEdit()
         text_box.setReadOnly(True)
         text_box.setText(result_text)
