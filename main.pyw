@@ -922,6 +922,7 @@ class CurveAnalyze(qtw.QWidget):
     def _settings_dialog_return(self):
         self.signal_graph_settings_changed.emit()
         self.signal_update_graph_request.emit()
+        self.signal_good_beep.emit()
 
     def _load_clicked(self):
         pass
