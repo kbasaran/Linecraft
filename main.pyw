@@ -228,7 +228,15 @@ class CurveAnalyze(qtw.QWidget):
         if self.no_curve_selected():
             return
         if len(self.qlistwidget_for_curves.selectedItems()) > 1:
-            raise NotImplementedError("Can export only one curve at a time")
+            message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
+                                          "Feature not Implemented",
+                                          "Can only export one curve at a time.",
+                                          )
+            message_box.setStandardButtons(qtw.QMessageBox.Ok)
+            returned = message_box.exec()
+
+            if returned:
+                return
         else:
             curve = self.get_selected_curves()[0]
 
