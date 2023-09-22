@@ -90,7 +90,7 @@ def find_longest_match_in_name(names: list) -> str:
     return max_occurring_key
 
 
-class CurveAnalyze(qtw.QWidget):
+class CurveAnalyze(qtw.QMainWindow):
     global settings
 
     signal_good_beep = qtc.Signal()
@@ -140,10 +140,6 @@ class CurveAnalyze(qtw.QWidget):
                 "set_reference": "Set reference",
                 "processing": "Processing",
                 "export_table": "Export table",
-                # "export_image": "Export image",
-                "settings": "Settings",
-                "load": "Load",
-                "save": "Save",
             },
             {"import_curve": "Import 2D curve from clipboard",
              "auto_import": "Attempt an import whenever new data is found on the clipboard.",
@@ -155,8 +151,6 @@ class CurveAnalyze(qtw.QWidget):
         # ---- Set types and states for buttons
         self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
         self._user_input_widgets["set_reference_pushbutton"].setCheckable(True)
-        self._user_input_widgets["load_pushbutton"].setEnabled(False)
-        self._user_input_widgets["save_pushbutton"].setEnabled(False)
 
         # ---- Create list widget
         self.qlistwidget_for_curves = qtw.QListWidget()
@@ -164,12 +158,28 @@ class CurveAnalyze(qtw.QWidget):
             qtw.QAbstractItemView.ExtendedSelection)
         # self.qlistwidget_for_curves.setDragDropMode(qtw.QAbstractItemView.InternalMove)  # crashes the application
 
+        # ---- Create menu bar
+        menu_bar = self.menuBar()
+        
+        file_menu = menu_bar.addMenu("File")
+        load_action = file_menu.addAction("Load..", self._load_clicked)
+        save_action = file_menu.addAction("Save..", self._save_clicked)
+
+        edit_menu = menu_bar.addMenu("Edit")
+        settings_action = edit_menu.addAction("Settings..", self._open_settings_dialog)
+
+        help_menu = menu_bar.addMenu("Help")
+        about_action = help_menu.addAction("About", self._open_about_menu)
+
+
+
     def _place_widgets(self):
-        self.setLayout(qtw.QVBoxLayout())
+        self.setCentralWidget(qtw.QWidget())
+        self.centralWidget().setLayout(qtw.QVBoxLayout())
         # self.layout().setSpacing(0)
-        self.layout().addWidget(self.graph, 3)
-        self.layout().addWidget(self.graph_buttons)
-        self.layout().addWidget(self.qlistwidget_for_curves, 1)
+        self.centralWidget().layout().addWidget(self.graph, 3)
+        self.centralWidget().layout().addWidget(self.graph_buttons)
+        self.centralWidget().layout().addWidget(self.qlistwidget_for_curves, 1)
         
         # set size policies
         self.graph.setSizePolicy(
@@ -200,18 +210,22 @@ class CurveAnalyze(qtw.QWidget):
             self._auto_importer_status_toggle)
         self._user_input_widgets["set_reference_pushbutton"].toggled.connect(
             self._reference_curve_status_toggle)
-        self._user_input_widgets["settings_pushbutton"].clicked.connect(
-            self._open_settings_dialog)
+
         self._user_input_widgets["processing_pushbutton"].clicked.connect(
             self._open_processing_dialog)
         self._user_input_widgets["import_curve_pushbutton"].clicked.connect(
             self.import_single_curve)
         self._user_input_widgets["import_table_pushbutton"].clicked.connect(
             self._import_table_clicked)
-        self._user_input_widgets["load_pushbutton"].clicked.connect(
-            self._load_clicked)
-        self._user_input_widgets["save_pushbutton"].clicked.connect(
-            self._save_clicked)
+
+        # ---- Menu bar
+        # self.menuBar()._user_input_widgets["load_pushbutton"].clicked.connect(
+        #     self._load_clicked)
+        # self.menuBar()._user_input_widgets["save_pushbutton"].clicked.connect(
+        #     self._save_clicked)
+        # self.menuBar()._user_input_widgets["settings_pushbutton"].clicked.connect(
+        #     self._open_settings_dialog)
+
         self.signal_update_graph_request.connect(self.graph.update_figure)
         self.signal_reposition_curves.connect(self.graph.change_lines_order)
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
@@ -933,14 +947,36 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_good_beep.emit()
 
     def _load_clicked(self):
-        pass
+        self.signal_bad_beep.emit()
 
     def _save_clicked(self):
-        pass
+        self.signal_bad_beep.emit()
 
+    def _open_about_menu(self):
+        result_text = "\n".join([
+        "Linecraft - Frequency response display and statistics tool",
+        "Copyright (C) 2023 - Kerem Basaran",
+        "https://github.com/kbasaran",
+        "kbasaran@gmail.com",
+        "",
+        "This program is free software: you can redistribute it and/or modify",
+        "it under the terms of the GNU General Public License as published by",
+        "the Free Software Foundation, either version 3 of the License, or",
+        "(at your option) any later version.",
+        "",
+        "This program is distributed in the hope that it will be useful,",
+        "but WITHOUT ANY WARRANTY; without even the implied warranty of",
+        "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the",
+        "GNU General Public License for more details.",
+        "",
+        "You should have received a copy of the GNU General Public License",
+        "along with this program.  If not, see <https://www.gnu.org/licenses/>.",
+        ])
+        text_box = ResultTextBox("About", result_text, monospace=False)
+        text_box.exec()
 
 class ResultTextBox(qtw.QDialog):
-    def __init__(self, title, result_text, parent=None):
+    def __init__(self, title, result_text, monospace=True, parent=None):
         super().__init__(parent=parent)
         # self.setWindowModality(qtc.Qt.WindowModality.NonModal)
 
@@ -951,10 +987,11 @@ class ResultTextBox(qtw.QDialog):
         text_box.setReadOnly(True)
         text_box.setText(result_text)
 
-        family = "Monospace" if "Monospace" in qtg.QFontDatabase.families() else "Consolas"
-        font = text_box.font()
-        font.setFamily(family)
-        text_box.setFont(font)
+        if monospace:
+            family = "Monospace" if "Monospace" in qtg.QFontDatabase.families() else "Consolas"
+            font = text_box.font()
+            font.setFamily(family)
+            text_box.setFont(font)
 
         layout.addWidget(text_box)
 
@@ -1463,7 +1500,6 @@ class AutoImporter(qtc.QThread):
                 pass
             except Exception as e:
                 logging.warning(e)
-
 
 def test_and_demo(window):
     pass
