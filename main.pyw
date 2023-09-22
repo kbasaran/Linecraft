@@ -217,6 +217,7 @@ class CurveAnalyze(qtw.QWidget):
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
         self.signal_flash_curve.connect(self.graph.flash_curve)
         self.signal_graph_settings_changed.connect(self.graph.set_grid_type)
+        self.graph.signal_reference_curve_state.connect(self._user_input_widgets["set_reference_pushbutton"].setChecked)
 
     def _export_table(self):
         """Paste selected curve(s) to clipboard in a table."""
@@ -425,11 +426,11 @@ class CurveAnalyze(qtw.QWidget):
             else:
                 indexes_to_remove = indexes
 
-        elif not indexes and self.no_curve_selected():
-            return
-
         elif not indexes:
-            indexes_to_remove = self.get_selected_curve_indexes()
+            if self.no_curve_selected():
+                return
+            else:
+                indexes_to_remove = self.get_selected_curve_indexes()
 
         self.graph.remove_line2d(indexes_to_remove)
         for i in reversed(indexes_to_remove):
