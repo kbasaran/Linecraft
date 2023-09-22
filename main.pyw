@@ -218,6 +218,8 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_flash_curve.connect(self.graph.flash_curve)
         self.signal_graph_settings_changed.connect(self.graph.set_grid_type)
         self.graph.signal_reference_curve_state.connect(self._user_input_widgets["set_reference_pushbutton"].setChecked)
+        
+        # Disable buttons when there is a reference curve active
         self.graph.signal_reference_curve_state.connect(lambda x: self._user_input_widgets["processing_pushbutton"].setEnabled(not x))
         self.graph.signal_reference_curve_state.connect(lambda x: self._user_input_widgets["export_table_pushbutton"].setEnabled(not x))
 
@@ -546,72 +548,6 @@ class CurveAnalyze(qtw.QWidget):
         self.signal_update_graph_request.emit()
         self.signal_successful_table_import.emit()
         self.signal_good_beep.emit()
-
-    def _import_table_old(self):
-
-        file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
-                                               dir=settings.last_used_folder,
-                                               filter='dBExtract XY_data (*.txt)',
-                                               )[0]
-        if file:
-            try:
-                os.path.isfile(file)
-            except:
-                raise FileNotFoundError
-        else:
-            return
-
-        settings.update_attr(
-            "last_used_folder", os.path.dirname(file))
-
-        with open(file, mode="rt") as extract_file:
-            lines = extract_file.read().splitlines()
-            """Read a Klippel dB extract export .txt file."""
-            if lines[0] == "XY_data" and lines[1][:4] == "DUTs":
-                extract_file.seek(0, 0)
-                data = pd.read_csv(extract_file,
-                                   delimiter=",",
-                                   header=1,
-                                   index_col="DUTs",
-                                   encoding='unicode_escape',
-                                   skipinitialspace=True,
-                                   )
-                data.columns = [float(i) for i in data.columns]
-
-            elif "DUT" == lines[0][:3]:
-                extract_file.seek(0, 0)
-                data = pd.read_csv(extract_file,
-                                   header=None,
-                                   index_col=0,
-                                   names=['DBTitle', 'Value'],
-                                   encoding='unicode_escape',
-                                   )
-                data = data.sort_values(by=['DBTitle'])
-
-            else:
-                raise ValueError("Unable to parse the text file."
-                                 " Format unrecognized. Did you use the correct DBExtract template?")
-
-            if data.shape[1] > 1:  # means if there are more than 1 frequency points
-                too_large = False  # data.shape[0] < 20
-                if too_large:
-                    pop_up = qtw.QMessageBox(qtw.QMessageBox.Information,
-                                             "Very large table import",
-                                             "\nCurves will be reduced somehow to not bloat the canvas."
-                                             "\nI don't know how yet.",
-                                             )
-                    pop_up.exec()
-
-                else:
-                    for name, values in data.iterrows():
-                        curve = signal_tools.Curve(
-                            np.column_stack((data.columns, values)))
-                        curve.set_name_base(name)
-                        _ = self._add_single_curve(
-                            None, curve, update_figure=False)
-
-                self.signal_update_graph_request.emit()
-                self.signal_good_beep.emit()
 
     def _auto_importer_status_toggle(self, checked: bool):
         if checked == 1:
