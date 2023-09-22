@@ -975,7 +975,7 @@ class CurveAnalyze(qtw.QMainWindow):
         "You should have received a copy of the GNU General Public License",
         "along with this program.  If not, see <https://www.gnu.org/licenses/>.",
         "",
-        "This software is built using Qt for Python.",
+        "This software uses Qt for Python under the GPLv3 license.",
         "https://www.qt.io/",
         ])
         text_box = ResultTextBox("About", result_text, monospace=False)
