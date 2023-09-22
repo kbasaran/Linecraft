@@ -451,7 +451,7 @@ class CurveAnalyze(qtw.QWidget):
         import_table_dialog.signal_import_table_request.connect(
             self._import_table_requested)
         self.signal_successful_table_import.connect(import_table_dialog.reject)
-        import_table_dialog.show()
+        import_table_dialog.exec()
 
     def _import_table_requested(self, source, import_settings):
         # ---- get the input
@@ -584,6 +584,7 @@ class CurveAnalyze(qtw.QWidget):
 
             else:
                 # multiple selections
+                self._user_input_widgets["set_reference_pushbutton"].setChecked(False)
                 self.signal_bad_beep.emit()
 
 
