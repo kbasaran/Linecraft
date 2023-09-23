@@ -1,0 +1,1 @@
+convert -background none svg -density 256x256 -define icon:auto-resize icon.ico
