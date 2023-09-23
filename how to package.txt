@@ -1,7 +1,0 @@
-Write the correct version in the file and gui title
-
-cxfreeze 'main.pyw' --target-dir dist --packages "scipy" --base-name Win32GUI --icon .\data\lc.ico
-
-copy data\ into dist
-copy licenses
-copy source code
