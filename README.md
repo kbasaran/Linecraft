@@ -1,6 +1,8 @@
 # Linecraft
 Frequency response plotting and statistics tool developed using Qt for Python
 
+![](/images/sc_main.png)
+
 ## Introduction
 Linecraft can import frequency response curves from csv files, spreadsheet applications or dB-lab. It allows plotting of the curves using Matplotlib library. It offers following manipulation and statistical analysis possibilities:
 - Linear interpolation to octave spaced frequency points
@@ -10,4 +12,22 @@ Linecraft can import frequency response curves from csv files, spreadsheet appli
 - Display of curves relative to a reference curve (i.e. set reference curve as y=0)
 
 ## Installation
-Work in progress..
+### Using Windows 64-bit Installer
+1. Download the latest installer from releases folder
+2. Run installer and follow instructions
+
+### Existing Python environment (Windows/Linux)
+> [!NOTE]
+> Only tested with Python 3.11.5
+```
+pip install -r requirements.txt
+python main.pyw
+```
+
+## Screenshots
+### Table import
+![](/images/sc_table_import.png)
+### Smoothing options
+![](/images/sc_smoothing.png)
+### Settings
+![](/images/sc_settings.png)
