@@ -13,11 +13,10 @@ Linecraft can import frequency response curves from csv files, spreadsheet appli
 
 ## Installation
 ### Using Windows 64-bit Installer
-1. Download the latest installer from releases folder
+1. Download the latest .msi installer from [releases](/releases/latest)
 2. Run installer and follow instructions
 
 ### Existing Python environment (Windows/Linux)
-> [!NOTE]
 > Only tested with Python 3.11.5
 ```
 pip install -r requirements.txt
