@@ -4,12 +4,12 @@ Frequency response plotting and statistics tool developed using Qt for Python
 ![](/images/sc_main.png)
 
 ## Introduction
-Linecraft can import frequency response curves from csv files, spreadsheet applications or dB-lab. It allows plotting of the curves using Matplotlib library. It offers following manipulation and statistical analysis possibilities:
-- Linear interpolation to octave spaced frequency points
-- Calculation of mean and median responses from imported curves
-- Calculation of interquartile range and detection of outliers based on their z-score
-- Sorting of curves based on their weighted correlation to a reference curve (i.e. best fit or reference selection)
-- Display of curves relative to a reference curve (i.e. set reference curve as y=0)
+Linecraft can import frequency response curves from .csv files, spreadsheets and dB-lab. It allows plotting of the curves using Matplotlib library. It offers the following manipulation and statistical analysis possibilities:
+- Interpolation of curve into new frequency points
+- Calculation of mean and median response from selected curves
+- Calculation of interquartile range and detection of outliers based on z-score's per frequency
+- Sorting of curves based on their correlation to a reference curve (i.e. best fit to reference)
+- Display of deviations from a reference curve (i.e. set a curve as y=0)
 
 ## Installation
 ### Using Windows 64-bit Installer
