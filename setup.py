@@ -10,6 +10,7 @@ build_exe_options = {
     "include_files": [
         (".\LICENSE", ".\LICENSE"),
         (".\README.md", ".\README.md"),
+	(".\logo\icon.ico", ".\logo\icon.ico"),
         ],
     "silent_level": 1,
 }
