@@ -16,6 +16,17 @@ __email__ = "kbasaran@gmail.com"
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+app_definitions = {"app_name": "Linecraft",
+                   "version": "0.1.0",
+                   "description": "Frequency response plotting and statistics",
+                   "copyright": "Copyright (C) 2023 Kerem Basaran",
+                   "icon_path": r".\logo\icon.ico",
+                   "author": "Kerem Basaran",
+                   "author_short": "kbasaran",
+                   "email": "kbasaran@gmail.com",
+                   "website": "https://github.com/kbasaran",
+                   }
+
 import os
 import sys
 import numpy as np
@@ -91,7 +102,7 @@ def find_longest_match_in_name(names: list) -> str:
 
 
 class CurveAnalyze(qtw.QMainWindow):
-    global settings
+    global settings, app_definitions
 
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
@@ -958,9 +969,11 @@ class CurveAnalyze(qtw.QMainWindow):
     def _open_about_menu(self):
         result_text = "\n".join([
         "Linecraft - Frequency response display and statistics tool",
-        "Copyright (C) 2023 - Kerem Basaran",
-        "https://github.com/kbasaran",
-        "kbasaran@gmail.com",
+        f"Version: {app_definitions['version']}",
+        "",
+        f"Copyright (C) 2023 - {app_definitions['author']}",
+        f"{app_definitions['website']}",
+        f"{app_definitions['email']}",
         "",
         "This program is free software: you can redistribute it and/or modify",
         "it under the terms of the GNU General Public License as published by",
@@ -988,7 +1001,7 @@ class ResultTextBox(qtw.QDialog):
 
         layout = qtw.QVBoxLayout(self)
         self.setWindowTitle(title)
-        self.setMinimumSize(700, 440)
+        self.setMinimumSize(700, 480)
         text_box = qtw.QTextEdit()
         text_box.setReadOnly(True)
         text_box.setText(result_text)
@@ -1512,21 +1525,25 @@ def test_and_demo(window):
 
 
 def main():
-    global settings, version
+    global settings, app_definitions
+    
+    # ---- Get name, version
+    window_title = app_definitions["app_name"]
+    icon_path = qtg.QIcon(app_definitions["icon_path"])
 
-    settings = pwi.Settings(name_and_version="kbasaran - Linecraft test build")
+    settings = pwi.Settings(app_definitions["app_name"])
 
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
-        app.setQuitOnLastWindowClosed(True)  # is this necessary??
-        app.setWindowIcon(qtg.QIcon('./logo/icon.ico'))
+        # app.setQuitOnLastWindowClosed(True)  # is this necessary??
+        app.setWindowIcon(icon_path)
 
     error_handler = pwi.ErrorHandlerUser(app)
     sys.excepthook = error_handler.excepthook
 
     mw = CurveAnalyze()
-    mw.setWindowTitle("Linecraft Qt - {}".format(version))
+    mw.setWindowTitle(window_title)
 
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()

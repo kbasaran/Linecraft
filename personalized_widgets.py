@@ -34,7 +34,10 @@ logging.basicConfig(level=logging.INFO)
 
 @dataclass
 class Settings:
-    name_and_version: str = ""
+    app_name: str = "Unnamed application"
+    author: str = "Kerem Basaran"
+    author_short: str = "kbasaran"
+    version: str = "Test build"
     GAMMA: float = 1.401  # adiabatic index of air
     P0: int = 101325
     RHO: float = 1.1839  # 25 degrees celcius
@@ -78,7 +81,7 @@ class Settings:
 
     def __post_init__(self):
         self.settings_sys = qtc.QSettings(
-            "kbasaran", self.name_and_version)
+            self.author_short, self.app_name + " - " + self.version)
         self.read_all_from_system()
 
     def update_attr(self, attr_name, new_val):

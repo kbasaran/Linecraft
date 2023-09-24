@@ -3,6 +3,8 @@
 
 import sys
 from cx_Freeze import setup, Executable
+from main import app_definitions
+# https://cx-freeze.readthedocs.io/en/stable/setup_script.html
 
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
@@ -19,19 +21,18 @@ build_exe_options = {
 base = "Win32GUI" if sys.platform == "win32" else None
 
 executables=[Executable("main.pyw",
-                        copyright="Copyright (C) 2023 Kerem Basaran",
+                        copyright=app_definitions["copyright"],
                         base=base,
-                        shortcut_name="Linecraft 0.1.0",
+                        shortcut_name=app_definitions["app_name"] + " v" + app_definitions["version"],
                         shortcut_dir="DesktopFolder",
-                        icon=r".\logo\icon.ico",
+                        icon=app_definitions["icon_path"],
                         )
             ],
 
 setup(
-    name="Linecraft",
-    version="0.1.0",
-    description="Frequency response plotting and statistics",
+    name=app_definitions["app_name"],
+    version=app_definitions["version"],
+    description=app_definitions["description"],
     options={"build_exe": build_exe_options},
     executables=executables,
 )
-
