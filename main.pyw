@@ -1520,7 +1520,7 @@ def main():
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
         app.setQuitOnLastWindowClosed(True)  # is this necessary??
-        app.setWindowIcon(qtg.QIcon('./Logo/icon.ico'))
+        app.setWindowIcon(qtg.QIcon('./logo/icon.ico'))
 
     error_handler = pwi.ErrorHandlerUser(app)
     sys.excepthook = error_handler.excepthook

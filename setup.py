@@ -22,5 +22,10 @@ setup(
     version="0.1.0",
     description="Frequency response plotting and statistics",
     options={"build_exe": build_exe_options},
-    executables=[Executable("main.pyw", base=base)],
+    executables=[Executable("main.pyw",
+                            base=base,
+                            shortcut_name="Linecraft 0.1.0",
+                            shortcut_dir="DesktopFolder",
+                            icon=r".\logo\icon.ico",
+                            )],
 )
