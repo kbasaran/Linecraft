@@ -12,7 +12,7 @@ build_exe_options = {
     "include_files": [
         (".\LICENSE", ".\LICENSE"),
         (".\README.md", ".\README.md"),
-	(".\logo\icon.ico", ".\logo\icon.ico"),
+	(app_definitions["icon_path"], app_definitions["icon_path"]),
         ],
     "silent_level": 1,
 }
@@ -26,8 +26,8 @@ executables=[Executable("main.pyw",
                         shortcut_name=app_definitions["app_name"] + " v" + app_definitions["version"],
                         shortcut_dir="DesktopFolder",
                         icon=app_definitions["icon_path"],
-                        )
-            ],
+                        ),
+            ]
 
 setup(
     name=app_definitions["app_name"],

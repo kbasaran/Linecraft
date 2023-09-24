@@ -1526,10 +1526,6 @@ def test_and_demo(window):
 
 def main():
     global settings, app_definitions
-    
-    # ---- Get name, version
-    window_title = app_definitions["app_name"]
-    icon_path = qtg.QIcon(app_definitions["icon_path"])
 
     settings = pwi.Settings(app_definitions["app_name"])
 
@@ -1537,18 +1533,20 @@ def main():
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to dod the sys.argv with that?
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
-        app.setWindowIcon(icon_path)
+        app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
 
     error_handler = pwi.ErrorHandlerUser(app)
     sys.excepthook = error_handler.excepthook
 
     mw = CurveAnalyze()
-    mw.setWindowTitle(window_title)
+    mw.setWindowTitle(app_definitions["app_name"])
 
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
     sound_engine_thread.start(qtc.QThread.HighPriority)
+    app.aboutToQuit.connect(sound_engine.release_all)
+    app.aboutToQuit.connect(sound_engine_thread.exit)
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
