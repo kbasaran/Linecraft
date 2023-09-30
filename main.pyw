@@ -320,7 +320,7 @@ class CurveAnalyze(qtw.QMainWindow):
         """Move curve up to index 'i_insert'"""
         selected_indexes_and_curves = self.get_selected_curves(as_dict=True)
 
-        new_indexes = [*range(len(self.curves))]
+        old_indexes = [*range(len(self.curves))]
         # each number in the list is the index before location change. index in the list is the new location.
         for i_within_selected, (i_before, curve) in enumerate(selected_indexes_and_curves.items()):
             # i_within_selected is the index within the selected curves
@@ -335,7 +335,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
             # update the QListWidget
             new_list_item = qtw.QListWidgetItem(curve.get_full_name())
-            print(curve.get_full_name())
+            # print(curve.get_full_name())
             if not curve.is_visible():
                 font = new_list_item.font()
                 font.setWeight(qtg.QFont.Thin)
@@ -345,10 +345,10 @@ class CurveAnalyze(qtw.QMainWindow):
             self.qlistwidget_for_curves.takeItem(i_before + 1)
 
             # update the changes dictionary to send to the graph
-            new_indexes.insert(i_after, new_indexes.pop(i_before))
+            old_indexes.insert(i_after, old_indexes.pop(i_before))
 
         # send the changes dictionary to the graph
-        self.signal_reposition_curves.emit(new_indexes)
+        self.signal_reposition_curves.emit(old_indexes)
 
     def move_up_1(self):
         if self.return_false_and_beep_if_no_curve_selected():
@@ -650,20 +650,38 @@ class CurveAnalyze(qtw.QMainWindow):
     def _add_single_curve(self, i: int, curve: signal_tools.Curve, update_figure: bool = True, line2d_kwargs={}):
         if curve.is_curve():
             i_max = len(self.curves)
-            i_insert = i if i is not None else i_max
-            curve.set_name_prefix(f"#{i_max:02d}")
-            self.curves.insert(i_insert, curve)
+            if not i or i == i_max:
+                # do an add
+                curve.set_name_prefix(f"#{i_max:02d}")
+                self.curves.append(curve)
 
-            list_item = qtw.QListWidgetItem(curve.get_full_name())
-            if not curve.is_visible():
-                font = list_item.font()
-                font.setWeight(qtg.QFont.Thin)
-                list_item.setFont(font)
+                list_item = qtw.QListWidgetItem(curve.get_full_name())
+                if not curve.is_visible():
+                    font = list_item.font()
+                    font.setWeight(qtg.QFont.Thin)
+                    list_item.setFont(font)
 
-            self.qlistwidget_for_curves.insertItem(i_insert, list_item)
+                self.qlistwidget_for_curves.addItem(list_item)
 
-            self.graph.add_line2d(i_insert, curve.get_full_name(), curve.get_xy(
-            ), update_figure=update_figure, line2d_kwargs=line2d_kwargs)
+                self.graph.add_line2d(i_max, curve.get_full_name(), curve.get_xy(
+                ), update_figure=update_figure, line2d_kwargs=line2d_kwargs)
+
+            else:
+                # do an insert
+                i_insert = i if i is not None else i_max
+                curve.set_name_prefix(f"#{i_max:02d}")
+                self.curves.insert(i_insert, curve)
+
+                list_item = qtw.QListWidgetItem(curve.get_full_name())
+                if not curve.is_visible():
+                    font = list_item.font()
+                    font.setWeight(qtg.QFont.Thin)
+                    list_item.setFont(font)
+
+                self.qlistwidget_for_curves.insertItem(i_insert, list_item)
+
+                self.graph.add_line2d(i_insert, curve.get_full_name(), curve.get_xy(
+                ), update_figure=update_figure, line2d_kwargs=line2d_kwargs)
 
             return i_insert
         else:
