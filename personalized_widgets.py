@@ -49,6 +49,9 @@ class Settings:
     ppo: int = 48 * 8
     FS: int = 48000
     A_beep: int = 0.25
+    T_beep = 0.1
+    freq_good_beep: float = 1175. / 2
+    freq_bad_beep: float = freq_good_beep / 4.
     last_used_folder: str = os.path.expanduser('~')
     show_legend: bool = True
     max_legend_size: int = 10
@@ -389,8 +392,6 @@ class SoundEngine(qtc.QObject):
         y = A * np.sin(t * 2 * np.pi * freq)
         fade_window = signal_tools.make_fade_window_n(1, 0, len(y), fade_start_end_idx=(len(y) - int(self.FS / 10), len(y)))
         y = y * fade_window
-        pad = np.zeros(int(self.FS / 10))
-        y = np.concatenate([y, pad])
         y = np.tile(y, self.stream.channels)
         y = y.reshape((len(y) // self.stream.channels,
                       self.stream.channels), order='F').astype(self.stream.dtype)
@@ -399,11 +400,11 @@ class SoundEngine(qtc.QObject):
 
     @qtc.Slot()
     def good_beep(self):
-        self.beep(self.app_settings.A_beep / 2, 0.1, 587.3)
+        self.beep(self.app_settings.A_beep, self.app_settings.T_beep, self.app_settings.freq_good_beep)
 
     @qtc.Slot()
     def bad_beep(self):
-        self.beep(self.app_settings.A_beep, 0.1, 293.7)
+        self.beep(self.app_settings.A_beep, self.app_settings.T_beep, self.app_settings.freq_bad_beep)
 
     @qtc.Slot()
     def release_all(self):
