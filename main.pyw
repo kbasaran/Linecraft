@@ -251,6 +251,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.signal_flash_curve_request.connect(self.graph.flash_curve)
         self.signal_update_labels_request.connect(self.graph.update_labels)
         self.signal_user_settings_changed.connect(self.graph.set_grid_type)
+        self.signal_reset_colors_request.connect(self.graph.reset_colors)
 
         # ---- Signals from Matplotlib graph
         self.graph.signal_good_beep.connect(self.signal_good_beep)
@@ -397,9 +398,7 @@ class CurveAnalyze(qtw.QMainWindow):
         if not len(self.curves):
             self.signal_bad_beep.emit()
         else:
-            returned = self.graph.reset_colors()
-            if not returned:
-                self.signal_good_beep.emit()
+            self.signal_reset_colors_request.emit()
 
     def _rename_curve_clicked(self):
         """Update the base name and suffix. Does not modify the index part (the prefix in Curve object)."""
