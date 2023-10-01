@@ -403,7 +403,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def _rename_curve_clicked(self):
         """Update the base name and suffix. Does not modify the index part (the prefix in Curve object)."""
-        new_names = {}
+        new_labels = {}
 
         if self.return_false_and_beep_if_no_curve_selected():
             return
@@ -423,7 +423,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 curve.add_name_suffix(text)
                 list_item = self.qlistwidget_for_curves.item(index)
                 list_item.setText(curve.get_full_name())
-                new_names[index] = curve.get_full_name()
+                new_labels[index] = curve.get_full_name()
 
         # ---- Single curve. Edit base name and suffixes into a new base name
         else:
@@ -442,9 +442,9 @@ class CurveAnalyze(qtw.QMainWindow):
             curve.set_name_base(text)
             list_item = self.qlistwidget_for_curves.item(index)
             list_item.setText(curve.get_full_name())
-            new_names[index] = curve.get_full_name()
+            new_labels[index] = curve.get_full_name()
 
-        self.graph.update_labels(new_names)
+        self.signal_update_labels_request.emit(new_labels)
 
     @qtc.Slot(signal_tools.Curve)
     def import_single_curve(self, curve: signal_tools.Curve = None):
