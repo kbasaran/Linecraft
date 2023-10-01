@@ -106,12 +106,17 @@ class CurveAnalyze(qtw.QMainWindow):
 
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
-    signal_update_graph_request = qtc.Signal()
-    signal_reposition_curves = qtc.Signal(object)  # it is in fact a dict but PySİde6 has a bug for passing dict
-    signal_flash_curve = qtc.Signal(int)
-    signal_graph_settings_changed = qtc.Signal()
-    signal_successful_table_import = qtc.Signal()
-    # signal_key_pressed = qtc.Signal(str)
+    signal_user_settings_changed = qtc.Signal()
+    signal_table_import_was_successful = qtc.Signal()
+
+    # ---- Signals to the graph
+    signal_update_graph_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
+    signal_update_labels_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
+    signal_reset_colors_request = qtc.Signal()
+    signal_update_visibility_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
+    signal_reposition_curves_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
+    signal_flash_curve_request = qtc.Signal(int)
+
 
     def __init__(self):
         super().__init__()
@@ -237,14 +242,22 @@ class CurveAnalyze(qtw.QMainWindow):
         # self.menuBar()._user_input_widgets["settings_pushbutton"].clicked.connect(
         #     self._open_settings_dialog)
 
-        self.signal_update_graph_request.connect(self.graph.update_figure)
-        self.signal_reposition_curves.connect(self.graph.change_lines_order)
+
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
-        self.signal_flash_curve.connect(self.graph.flash_curve)
-        self.signal_graph_settings_changed.connect(self.graph.set_grid_type)
+
+        # ---- Signals to Matplolib graph
+        self.signal_update_graph_request.connect(self.graph.update_figure)
+        self.signal_reposition_curves_request.connect(self.graph.change_lines_order)
+        self.signal_flash_curve_request.connect(self.graph.flash_curve)
+        self.signal_update_labels_request.connect(self.graph.update_labels)
+        self.signal_user_settings_changed.connect(self.graph.set_grid_type)
+
+        # ---- Signals from Matplotlib graph
+        self.graph.signal_good_beep.connect(self.signal_good_beep)
+        self.graph.signal_bad_beep.connect(self.signal_bad_beep)
         self.graph.signal_reference_curve_state.connect(self._user_input_widgets["set_reference_pushbutton"].setChecked)
         
-        # Disable buttons when there is a reference curve active
+        # ---- Disable some buttons when there is a reference curve active
         self.graph.signal_reference_curve_state.connect(lambda x: self._user_input_widgets["processing_pushbutton"].setEnabled(not x))
         self.graph.signal_reference_curve_state.connect(lambda x: self._user_input_widgets["export_table_pushbutton"].setEnabled(not x))
 
@@ -349,7 +362,7 @@ class CurveAnalyze(qtw.QMainWindow):
         new_indexes_of_qlist_items = dict(zip(new_order_of_qlist_items, range(len(self.curves))))
 
         # send the changes dictionary to the graph
-        self.signal_reposition_curves.emit(new_indexes_of_qlist_items)
+        self.signal_reposition_curves_request.emit(new_indexes_of_qlist_items)
 
     def move_up_1(self):
         if self.return_false_and_beep_if_no_curve_selected():
@@ -375,10 +388,9 @@ class CurveAnalyze(qtw.QMainWindow):
                 curve.set_name_prefix(f"#{i:02d}")
                 self.qlistwidget_for_curves.item(
                     i).setText(curve.get_full_name())
-            returned = self.graph.update_labels(
-                {i: curve.get_full_name() for i, curve in enumerate(self.curves)})
-            if not returned:
-                self.signal_good_beep.emit()
+            new_labels = {i: curve.get_full_name() for i, curve in enumerate(self.curves)}
+                        
+            self.signal_update_labels_request.emit(new_labels)
 
     def _reset_colors_of_curves(self):
         """Reset the colors for the graph curves with ordered standard colors"""
@@ -483,7 +495,7 @@ class CurveAnalyze(qtw.QMainWindow):
         import_table_dialog = ImportDialog(parent=self)
         import_table_dialog.signal_import_table_request.connect(
             self._import_table_requested)
-        self.signal_successful_table_import.connect(import_table_dialog.reject)
+        self.signal_table_import_was_successful.connect(import_table_dialog.reject)
         import_table_dialog.exec()
 
     def _import_table_requested(self, source, import_settings):
@@ -581,8 +593,8 @@ class CurveAnalyze(qtw.QMainWindow):
             curve.set_name_base(name)
             _ = self._add_single_curve(None, curve, update_figure=False)
 
-        self.signal_update_graph_request.emit()
-        self.signal_successful_table_import.emit()
+        self.signal_update_graph_request.emit({})
+        self.signal_table_import_was_successful.emit()
         self.signal_good_beep.emit()
 
     def _auto_importer_status_toggle(self, checked: bool):
@@ -724,7 +736,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def _flash_curve(self, item: qtw.QListWidgetItem):
         index = self.qlistwidget_for_curves.row(item)
-        self.signal_flash_curve.emit(index)
+        self.signal_flash_curve_request.emit(index)
 
     def send_visibility_states_to_graph(self):
         visibility_states = {i: curve.is_visible()
@@ -751,7 +763,7 @@ class CurveAnalyze(qtw.QMainWindow):
             for i, curve in sorted(results["to_insert"].items()):
                 _ = self._add_single_curve(
                     i, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
-            self.signal_update_graph_request.emit()
+            self.signal_update_graph_request.emit({})
             to_beep = True
 
         if "result_text" in results.keys():
@@ -972,8 +984,8 @@ class CurveAnalyze(qtw.QMainWindow):
             pass
 
     def _settings_dialog_return(self):
-        self.signal_graph_settings_changed.emit()
-        self.signal_update_graph_request.emit()
+        self.signal_user_settings_changed.emit()
+        self.signal_update_graph_request.emit({"recalculate_limits": False})
         self.signal_good_beep.emit()
 
     def _load_or_save_clicked(self):
