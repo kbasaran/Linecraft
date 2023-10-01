@@ -235,14 +235,6 @@ class CurveAnalyze(qtw.QMainWindow):
         self._user_input_widgets["import_table_pushbutton"].clicked.connect(
             self._import_table_clicked)
 
-        # ---- Menu bar
-        # self.menuBar()._user_input_widgets["load_pushbutton"].clicked.connect(
-        #     self._load_clicked)
-        # self.menuBar()._user_input_widgets["save_pushbutton"].clicked.connect(
-        #     self._save_clicked)
-        # self.menuBar()._user_input_widgets["settings_pushbutton"].clicked.connect(
-        #     self._open_settings_dialog)
-
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
 
         # ---- Signals to Matplolib graph
@@ -257,11 +249,11 @@ class CurveAnalyze(qtw.QMainWindow):
         # ---- Signals from Matplotlib graph
         self.graph.signal_good_beep.connect(self.signal_good_beep)
         self.graph.signal_bad_beep.connect(self.signal_bad_beep)
-        self.graph.signal_reference_curve_state.connect(self._user_input_widgets["set_reference_pushbutton"].setChecked)
-        
-        # ---- Disable some buttons when there is a reference curve active
-        self.graph.signal_reference_curve_state.connect(lambda x: self._user_input_widgets["processing_pushbutton"].setEnabled(not x))
-        self.graph.signal_reference_curve_state.connect(lambda x: self._user_input_widgets["export_table_pushbutton"].setEnabled(not x))
+        self.graph.signal_is_reference_curve_active.connect(self._user_input_widgets["set_reference_pushbutton"].setChecked)
+
+        # Disable some buttons when there is a reference curve active
+        self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["processing_pushbutton"].setEnabled(not x))
+        self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["export_table_pushbutton"].setEnabled(not x))
 
     def _export_table(self):
         """Paste selected curve(s) to clipboard in a table."""
