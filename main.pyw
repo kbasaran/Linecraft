@@ -113,6 +113,7 @@ class CurveAnalyze(qtw.QMainWindow):
     signal_update_graph_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     signal_update_labels_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     signal_reset_colors_request = qtc.Signal()
+    signal_remove_curves_request = qtc.Signal(list)
     signal_update_visibility_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     signal_reposition_curves_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     signal_flash_curve_request = qtc.Signal(int)
@@ -242,7 +243,6 @@ class CurveAnalyze(qtw.QMainWindow):
         # self.menuBar()._user_input_widgets["settings_pushbutton"].clicked.connect(
         #     self._open_settings_dialog)
 
-
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
 
         # ---- Signals to Matplolib graph
@@ -252,6 +252,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.signal_update_labels_request.connect(self.graph.update_labels)
         self.signal_user_settings_changed.connect(self.graph.set_grid_type)
         self.signal_reset_colors_request.connect(self.graph.reset_colors)
+        self.signal_remove_curves_request.connect(self.graph.remove_line2d)
 
         # ---- Signals from Matplotlib graph
         self.graph.signal_good_beep.connect(self.signal_good_beep)
@@ -485,10 +486,11 @@ class CurveAnalyze(qtw.QMainWindow):
             else:
                 indexes_to_remove = self.get_selected_curve_indexes()
 
-        self.graph.remove_line2d(indexes_to_remove)
         for i in reversed(indexes_to_remove):
             self.qlistwidget_for_curves.takeItem(i)
             self.curves.pop(i)
+
+        self.signal_remove_curves_request.emit(indexes_to_remove)
 
     def _import_table_clicked(self):
         import_table_dialog = ImportDialog(parent=self)
