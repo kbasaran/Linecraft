@@ -418,7 +418,6 @@ class ErrorHandlerDeveloper:
         message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
                                       "Error    :(",
                                       error_msg +
-                                      "\nYour application may now be in an unstable state."
                                       "\n\nThis event may be logged unless ignore is chosen.",
                                       )
         message_box.addButton(qtw.QMessageBox.Ignore)
@@ -441,8 +440,7 @@ class ErrorHandlerUser:
         message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
                                       "Error    :(",
                                       error_msg +
-                                      "\n\nYour application may now be in an unstable state."
-                                      "\nThis event may be logged unless ignore is chosen.",
+                                      "\n\nThis event may be logged unless ignore is chosen.",
                                       )
         message_box.addButton(qtw.QMessageBox.Ignore)
         close_button = message_box.addButton(qtw.QMessageBox.Close)
