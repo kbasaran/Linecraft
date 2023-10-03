@@ -49,6 +49,7 @@ import matplotlib as mpl
 from tabulate import tabulate
 from io import StringIO
 from datetime import date
+import pickle
 
 
 import logging
@@ -160,7 +161,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 "show": "Show",
                 "set_reference": "Set reference",
                 "processing": "Processing",
-                "export_table": "Export table",
+                "export_curve": "Export curve",
             },
             {"import_curve": "Import 2D curve from clipboard",
              "auto_import": "Attempt an import whenever new data is found on the clipboard.",
@@ -222,8 +223,8 @@ class CurveAnalyze(qtw.QMainWindow):
             self.hide_curves)
         self._user_input_widgets["show_pushbutton"].clicked.connect(
             self.show_curves)
-        self._user_input_widgets["export_table_pushbutton"].clicked.connect(
-            self._export_table)
+        self._user_input_widgets["export_curve_pushbutton"].clicked.connect(
+            self._export_curve)
         self._user_input_widgets["auto_import_pushbutton"].toggled.connect(
             self._auto_importer_status_toggle)
         self._user_input_widgets["set_reference_pushbutton"].toggled.connect(
@@ -257,9 +258,9 @@ class CurveAnalyze(qtw.QMainWindow):
 
         # Disable some buttons when there is a reference curve active
         self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["processing_pushbutton"].setEnabled(not x))
-        self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["export_table_pushbutton"].setEnabled(not x))
+        self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["export_curve_pushbutton"].setEnabled(not x))
 
-    def _export_table(self):
+    def _export_curve(self):
         """Paste selected curve(s) to clipboard in a table."""
         if self.return_false_and_beep_if_no_curve_selected():
             return
@@ -661,7 +662,8 @@ class CurveAnalyze(qtw.QMainWindow):
             i_max = len(self.curves)
             if i_insert is None or i_insert >= i_max:
                 # do an add
-                curve.set_name_prefix(f"#{i_max:02d}")
+                if not curve.has_name_prefix():
+                    curve.set_name_prefix(f"#{i_max:02d}")
                 self.curves.append(curve)
 
                 list_item = qtw.QListWidgetItem(curve.get_full_name())
@@ -1022,6 +1024,70 @@ class CurveAnalyze(qtw.QMainWindow):
         ])
         text_box = ResultTextBox("About", result_text, monospace=False)
         text_box.exec()
+
+    def collect_states(self):
+        ax = self.graph.ax
+        graph_info = {"title": ax.get_title(),
+                      "xlabel": ax.get_xlabel(),
+                      "ylabel": ax.get_ylabel(),
+                      "xscale": ax.get_xscale(),
+                      "yscale": ax.get_yscale(),
+                      }
+
+        def collect_line2d_info(line):
+            line_info = {"linestyle": line.get_style(),
+                         "drawstyle": line.get_drawstyle(),
+                         "linewidth": line.get_width(),
+                         "color": line.get_color(),
+                         "marker": line.get_marker(),
+                         "markersize": line.get_markersize(),
+                         "markerfacecolor": line.get_markerfacecolor(),
+                         "markeredgecolor": line.get_markeredgecolor(),
+                         }
+            return line_info
+    
+        def collect_curve_info(curve):
+            curve_info = {"visible": curve.is_visible(),
+                          "identification": curve._identification,
+                          "x": tuple(curve.get_x()),
+                          "y": tuple(curve.get_y()),
+                          }
+            return curve_info
+
+        lines_info = []
+        curves_info = []
+        for line, curve in zip(self.graph.get_lines_in_user_defined_order(), self.curves):
+            lines_info.append(collect_line2d_info(line))
+            curves_info.append(collect_curve_info(curve))
+
+        package = pickle.dumps((graph_info, lines_info, curves_info), protocol=5)
+        return package
+
+    def recover_states(self, package):
+        graph_info, lines_info, curves_info = pickle.loads(package)
+
+        # ---- delete all lines first
+        # self.remove_curves([*range(len(self.curves))])
+        
+        if not self.curves:
+            # ---- apply graph state
+            ax = self.graph.ax
+            ax.set_title(graph_info["title"])
+            ax.set_xlabel(graph_info["xlabel"])
+            ax.set_ylabel(graph_info["ylabel"])
+            ax.set_xscale(graph_info["xscale"])
+            ax.set_yscale(graph_info["yscale"])
+
+        # ---- add lines
+        for line_info, curve_info in zip(lines_info, curves_info):
+            curve = signal_tools.Curve((curve_info["x"], curve_info["y"]))
+            curve.set_visible(curve_info["visible"])
+            curve._identification = curve_info["identification"]
+            
+            self._add_single_curve(None, curve, update_figure=False, line2d_kwargs=line_info)
+        
+        self.graph.update_figure()
+
 
 class ResultTextBox(qtw.QDialog):
     def __init__(self, title, result_text, monospace=True, parent=None):
