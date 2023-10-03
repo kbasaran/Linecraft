@@ -17,7 +17,7 @@ __email__ = "kbasaran@gmail.com"
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.1.1",
+                   "version": "0.1.1rc0",
                    "description": "Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
                    "icon_path": r".\logo\icon.ico",
