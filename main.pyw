@@ -110,14 +110,17 @@ class CurveAnalyze(qtw.QMainWindow):
     signal_table_import_was_successful = qtc.Signal()
 
     # ---- Signals to the graph
-    signal_update_graph_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
+    # signal_update_figure_request = qtc.Signal(object)  # failed to pass all the args and kwargs
+    # in an elegant way
     signal_update_labels_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     signal_reset_colors_request = qtc.Signal()
     signal_remove_curves_request = qtc.Signal(list)
     signal_update_visibility_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     signal_reposition_curves_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     signal_flash_curve_request = qtc.Signal(int)
-
+    signal_toggle_reference_curve_request = qtc.Signal(object)  # it is a list or a NoneType
+    # signal_add_line_request = qtc.Signal(list, object)  # failed to pass all the args and kwargs
+    # in an elegant way
 
     def __init__(self):
         super().__init__()
@@ -236,13 +239,16 @@ class CurveAnalyze(qtw.QMainWindow):
         self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
 
         # ---- Signals to Matplolib graph
-        self.signal_update_graph_request.connect(self.graph.update_figure)
+        # self.signal_update_figure_request.connect(self.graph.update_figure)
         self.signal_reposition_curves_request.connect(self.graph.change_lines_order)
         self.signal_flash_curve_request.connect(self.graph.flash_curve)
         self.signal_update_labels_request.connect(self.graph.update_labels)
         self.signal_user_settings_changed.connect(self.graph.set_grid_type)
         self.signal_reset_colors_request.connect(self.graph.reset_colors)
         self.signal_remove_curves_request.connect(self.graph.remove_line2d)
+        self.signal_toggle_reference_curve_request.connect(self.graph.toggle_reference_curve)
+        # self.signal_add_line_request.connect(self.graph.add_line2d)
+        self.signal_update_visibility_request.connect(self.graph.hide_show_line2d)
 
         # ---- Signals from Matplotlib graph
         self.graph.signal_good_beep.connect(self.signal_good_beep)
@@ -583,7 +589,7 @@ class CurveAnalyze(qtw.QMainWindow):
             curve.set_name_base(name)
             _ = self._add_single_curve(None, curve, update_figure=False)
 
-        self.signal_update_graph_request.emit({})
+        self.graph.update_figure()
         self.signal_table_import_was_successful.emit()
         self.signal_good_beep.emit()
 
@@ -618,12 +624,12 @@ class CurveAnalyze(qtw.QMainWindow):
                 reference_item.setText(curve.get_full_name())
 
                 # Update graph
-                self.graph.toggle_reference_curve([index, curve])
+                self.signal_toggle_reference_curve_request.emit([index, curve])
 
             else:
                 # multiple selections
                 self._user_input_widgets["set_reference_pushbutton"].setChecked(False)
-                self.signal_bad_beep.emit()
+                self.signal_toggle_reference_curve_request.emit(None)
 
 
         elif not checked:
@@ -664,9 +670,10 @@ class CurveAnalyze(qtw.QMainWindow):
                     font.setWeight(qtg.QFont.Thin)
                     list_item.setFont(font)
                 self.qlistwidget_for_curves.addItem(list_item)
-
-                self.graph.add_line2d(i_max, curve.get_full_name(), curve.get_xy(
-                ), update_figure=update_figure, line2d_kwargs=line2d_kwargs)
+                
+                self.graph.add_line2d(i_max, curve.get_full_name(), curve.get_xy(),
+                                      update_figure=update_figure, line2d_kwargs=line2d_kwargs,
+                                      )
                 
                 return i_max
 
@@ -753,7 +760,7 @@ class CurveAnalyze(qtw.QMainWindow):
             for i, curve in sorted(results["to_insert"].items()):
                 _ = self._add_single_curve(
                     i, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
-            self.signal_update_graph_request.emit({})
+            self.graph.update_figure()
             to_beep = True
 
         if "result_text" in results.keys():
@@ -975,7 +982,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def _settings_dialog_return(self):
         self.signal_user_settings_changed.emit()
-        self.signal_update_graph_request.emit({"recalculate_limits": False})
+        self.graph.update_figure(recalculate_limits=False)
         self.signal_good_beep.emit()
 
     def _load_or_save_clicked(self):
