@@ -184,7 +184,7 @@ class CurveAnalyze(qtw.QMainWindow):
         menu_bar = self.menuBar()
         
         file_menu = menu_bar.addMenu("File")
-        load_action = file_menu.addAction("Load..", self.load_widget_state_to_picked_file)
+        load_action = file_menu.addAction("Load..", self.pick_a_file_and_load_widget_state_from_it)
         save_action = file_menu.addAction("Save..", self.save_widget_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
@@ -1112,21 +1112,21 @@ class CurveAnalyze(qtw.QMainWindow):
             f.write(package)
         self.signal_good_beep.emit()
 
-    def load_widget_state_to_picked_file(self):
+    def pick_a_file_and_load_widget_state_from_it(self):
         file = qtw.QFileDialog.getOpenFileName(self, caption='Get state from a save file..',
                                                dir=settings.last_used_folder,
                                                filter='Linecraft files (*.lc)',
                                                )[0]
         if file:
-            self.load_widget_state_file(file)
+            self.load_widget_state_from_file(file)
         else:
             pass  # canceled file select        
 
-    def load_widget_state_file(self, file):
+    def load_widget_state_from_file(self, file):
         try:
             os.path.isfile(file)
         except:
-            raise FileNotFoundError
+            raise FileNotFoundError(file)
 
         settings.update_attr("last_used_folder", os.path.dirname(file))
         with open(file, "rb") as f:
@@ -1664,11 +1664,30 @@ class AutoImporter(qtc.QThread):
 def test_and_demo(window):
     pass
 
+def parse_args(app_definitions):
+    import argparse
+
+    description = (
+        f"{app_definitions['app_name']} - {app_definitions['copyright']}"
+        "\nThis program comes with ABSOLUTELY NO WARRANTY"
+        "\nThis is free software, and you are welcome to redistribute it"
+        "\nunder certain conditions. See LICENSE file for more details."
+    )
+
+    parser = argparse.ArgumentParser(prog="python main.py",
+                                     description=description,
+                                     epilog={app_definitions['website']},
+                                     )
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+                        help="Path to a '*.lc' file. This will open a saved state.")
+
+    return parser.parse_args()
 
 def main():
     global settings, app_definitions
 
     settings = pwi.Settings(app_definitions["app_name"])
+    args = parse_args(app_definitions)
 
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
@@ -1690,6 +1709,9 @@ def main():
     app.aboutToQuit.connect(sound_engine_thread.exit)
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
+
+    if args.infile:
+        mw.load_widget_state_from_file(args.infile.name)
 
     mw.show()
     app.exec()
