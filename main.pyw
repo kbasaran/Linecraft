@@ -184,8 +184,8 @@ class CurveAnalyze(qtw.QMainWindow):
         menu_bar = self.menuBar()
         
         file_menu = menu_bar.addMenu("File")
-        load_action = file_menu.addAction("Load..", self.pick_a_file_and_load_widget_state_from_it)
-        save_action = file_menu.addAction("Save..", self.save_widget_state_to_file)
+        load_action = file_menu.addAction("Load state..", self.pick_a_file_and_load_widget_state_from_it)
+        save_action = file_menu.addAction("Save state..", self.save_widget_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
         settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
