@@ -27,6 +27,7 @@ from dataclasses import dataclass, fields
 import sounddevice as sd
 import numpy as np
 from generictools import signal_tools
+import pickle
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -418,7 +419,6 @@ class ErrorHandlerDeveloper:
         message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
                                       "Error    :(",
                                       error_msg +
-                                      "\nYour application may now be in an unstable state."
                                       "\n\nThis event may be logged unless ignore is chosen.",
                                       )
         message_box.addButton(qtw.QMessageBox.Ignore)
@@ -441,8 +441,7 @@ class ErrorHandlerUser:
         message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
                                       "Error    :(",
                                       error_msg +
-                                      "\n\nYour application may now be in an unstable state."
-                                      "\nThis event may be logged unless ignore is chosen.",
+                                      "\n\nThis event may be logged unless ignore is chosen.",
                                       )
         message_box.addButton(qtw.QMessageBox.Ignore)
         close_button = message_box.addButton(qtw.QMessageBox.Close)
@@ -453,3 +452,66 @@ class ErrorHandlerUser:
         close_button.clicked.connect(logging.warning(error_msg))
     
         message_box.exec()
+
+class LoadSaveEngine:
+    """
+    Data to save for the graph in general:
+        Plot title: sget_title
+        Plot x label: sget_xlabel
+        Plot y label: sget_ylabel
+        x linear/log: sget_xscale
+        y linear/log: sget_yscale
+
+    Data to save per curve item:
+        Curve object in CurveAnalyze.curves
+        Line2D:
+            style: sget_linestyle
+            draw style: sget_drawstyle
+            width: sget_linewidth
+            color: sget_color
+        Line2D marker:
+            style: sget_marker
+            size: sget_markersize
+            face col: sget_markerfacecolor
+            edge col: sget_markeredgecolor
+    """
+
+    def collect_graph_info(self, ax):
+        graph_info = {"title": ax.get_title(),
+                      "xlabel": ax.get_xlabel(),
+                      "ylabel": ax.get_ylabel(),
+                      "xscale": ax.get_xscale(),
+                      "yscale": ax.get_yscale(),
+                      }
+        return graph_info
+
+    def collect_line2d_info(self, line):
+        line_info = {"style": line.get_style(),
+                     "drawstyle": line.get_drawstyle(),
+                     "width": line.get_width(),
+                     "color": line.get_color(),
+                     "marker": line.get_marker(),
+                     "markersize": line.get_markersize(),
+                     "markerfacecolor": line.get_markerfacecolor(),
+                     "markeredgecolor": line.get_markeredgecolor(),
+                     }
+        return line_info
+
+    def collect_curve_info(self, curve):
+        curve_info = {"visible": curve.is_visible(),
+                      "identification": curve._identification,
+                      "x": tuple(curve.get_x()),
+                      "y": tuple(curve.get_y()),
+                      }
+        return curve_info
+
+    def collect_all_info(self, ax, lines, curves):
+        graph_info = self.collect_graph_info(ax)
+        lines_info = []
+        curves_info = []
+        for line, curve in zip(lines, curves):
+            lines_info.append(self.collect_line2d_info(line))
+            curves_info.append(self.collect_curve_info(curve))
+
+        package = pickle.dumps([graph_info, lines_info, curves_info], protocol=5)
+        return package
