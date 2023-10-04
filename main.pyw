@@ -184,8 +184,8 @@ class CurveAnalyze(qtw.QMainWindow):
         menu_bar = self.menuBar()
         
         file_menu = menu_bar.addMenu("File")
-        load_action = file_menu.addAction("Load..", self._load_or_save_clicked)
-        save_action = file_menu.addAction("Save..", self._load_or_save_clicked)
+        load_action = file_menu.addAction("Load..", self.load_widget_state_to_picked_file)
+        save_action = file_menu.addAction("Save..", self.save_widget_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
         settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
@@ -987,10 +987,9 @@ class CurveAnalyze(qtw.QMainWindow):
         self.graph.update_figure(recalculate_limits=False)
         self.signal_good_beep.emit()
 
-    def _load_or_save_clicked(self):
+    def _not_implemented_popup(self):
         message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                       "Feature not Implemented",
-                                      "Save and load not available at this moment.",
                                       )
         message_box.setStandardButtons(qtw.QMessageBox.Ok)
         message_box.exec()
@@ -1025,7 +1024,7 @@ class CurveAnalyze(qtw.QMainWindow):
         text_box = ResultTextBox("About", result_text, monospace=False)
         text_box.exec()
 
-    def collect_states(self):
+    def get_widget_state(self):
         ax = self.graph.ax
         graph_info = {"title": ax.get_title(),
                       "xlabel": ax.get_xlabel(),
@@ -1035,9 +1034,9 @@ class CurveAnalyze(qtw.QMainWindow):
                       }
 
         def collect_line2d_info(line):
-            line_info = {"linestyle": line.get_style(),
+            line_info = {"linestyle": line.get_linestyle(),
                          "drawstyle": line.get_drawstyle(),
-                         "linewidth": line.get_width(),
+                         "linewidth": line.get_linewidth(),
                          "color": line.get_color(),
                          "marker": line.get_marker(),
                          "markersize": line.get_markersize(),
@@ -1063,7 +1062,7 @@ class CurveAnalyze(qtw.QMainWindow):
         package = pickle.dumps((graph_info, lines_info, curves_info), protocol=5)
         return package
 
-    def recover_states(self, package):
+    def set_widget_state(self, package):
         graph_info, lines_info, curves_info = pickle.loads(package)
 
         # ---- delete all lines first
@@ -1087,6 +1086,53 @@ class CurveAnalyze(qtw.QMainWindow):
             self._add_single_curve(None, curve, update_figure=False, line2d_kwargs=line_info)
         
         self.graph.update_figure()
+
+    def save_widget_state_to_file(self):
+        global settings
+        
+        path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save state to a file..',
+                                                          dir=settings.last_used_folder,
+                                                          filter='Linecraft files (*.lc)',
+                                                          )
+        # path_unverified.setDefaultSuffix("lc") not available for getSaveFileName
+        
+        # filter not working as expected nautilus. Saves files without file extension.
+        try:
+            file = path_unverified[0]
+            if file:  # if we received a string
+                file = (file + ".lc" if file[-3:] != ".lc" else file)
+                assert os.path.isdir(os.path.dirname(file))
+            else:
+                return  # nothing was selected, pick file canceled
+        except:
+            raise NotADirectoryError(file)
+
+        settings.update_attr("last_used_folder", os.path.dirname(file))
+        package = self.get_widget_state()
+        with open(file, "wb") as f:
+            f.write(package)
+        self.signal_good_beep.emit()
+
+    def load_widget_state_to_picked_file(self):
+        file = qtw.QFileDialog.getOpenFileName(self, caption='Get state from a save file..',
+                                               dir=settings.last_used_folder,
+                                               filter='Linecraft files (*.lc)',
+                                               )[0]
+        if file:
+            self.load_widget_state_file(file)
+        else:
+            pass  # canceled file select        
+
+    def load_widget_state_file(self, file):
+        try:
+            os.path.isfile(file)
+        except:
+            raise FileNotFoundError
+
+        settings.update_attr("last_used_folder", os.path.dirname(file))
+        with open(file, "rb") as f:
+            self.set_widget_state(f.read())
+        self.signal_good_beep.emit()
 
 
 class ResultTextBox(qtw.QDialog):
