@@ -303,7 +303,7 @@ class CurveAnalyze(qtw.QMainWindow):
             return None
 
     def get_selected_curve_indexes(self) -> list:
-        """Get a list of indexes for the curves currently selected in the list widget"""
+        """Get a list of indexes for the curves currently selected in the list widget. MAY NOT BE SORTED!"""
         selected_list_items = self.qlistwidget_for_curves.selectedItems()
         indexes = [self.qlistwidget_for_curves.row(
             list_item) for list_item in selected_list_items]
@@ -482,7 +482,7 @@ class CurveAnalyze(qtw.QMainWindow):
             else:
                 indexes_to_remove = self.get_selected_curve_indexes()
 
-        for i in reversed(indexes_to_remove):
+        for i in sorted(indexes_to_remove, reverse=True):
             self.qlistwidget_for_curves.takeItem(i)
             self.curves.pop(i)
 
@@ -630,8 +630,7 @@ class CurveAnalyze(qtw.QMainWindow):
             else:
                 # multiple selections
                 self._user_input_widgets["set_reference_pushbutton"].setChecked(False)
-                self.signal_toggle_reference_curve_request.emit(None)
-
+                self.signal_bad_beep.emit()
 
         elif not checked:
             # find back the reference curve
@@ -654,7 +653,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 reference_item.setText(curve.get_full_name())
 
                 # Update graph
-                self.graph.toggle_reference_curve(None)
+                self.signal_toggle_reference_curve_request.emit(None)
 
 
     def _add_single_curve(self, i_insert: int, curve: signal_tools.Curve, update_figure: bool = True, line2d_kwargs={}):
