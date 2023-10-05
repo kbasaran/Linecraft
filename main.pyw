@@ -745,11 +745,8 @@ class CurveAnalyze(qtw.QMainWindow):
         if self.return_false_and_beep_if_no_curve_selected():
             return
 
-        processing_dialog = ProcessingDialog(
-            self.get_selected_curves(), parent=self)
-        processing_dialog.signal_processing_request.connect(
-            self._processing_dialog_return)
-
+        processing_dialog = ProcessingDialog(parent=self)
+        processing_dialog.signal_processing_request.connect(self._processing_dialog_return)
         processing_dialog.exec()
 
     def _processing_dialog_return(self, processing_function_name):
@@ -758,9 +755,9 @@ class CurveAnalyze(qtw.QMainWindow):
 
         if "to_insert" in results.keys():
             # sort the dict by highest key value first
-            for i, curve in sorted(results["to_insert"].items()):
+            for i_to_insert, curve in sorted(results["to_insert"].items(), reverse=True):
                 _ = self._add_single_curve(
-                    i, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
+                    i_to_insert, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
             self.graph.update_figure()
             to_beep = True
 
@@ -792,13 +789,12 @@ class CurveAnalyze(qtw.QMainWindow):
         curve_mean.add_name_suffix(f"mean, {length_curves} curves")
         curve_median.add_name_suffix(f"median, {length_curves} curves")
 
-        i_insert = 0
-        to_insert = {}
+        to_insert = []
         if settings.mean_selected:
-            to_insert[i_insert] = curve_mean
-            i_insert += 1
+            to_insert.append(curve_mean)
         if settings.median_selected:
-            to_insert[i_insert] = curve_median
+            to_insert.append(curve_median)
+        to_insert = dict(zip([*range(len(to_insert))], to_insert))
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
@@ -820,7 +816,6 @@ class CurveAnalyze(qtw.QMainWindow):
         representative_base_name = find_longest_match_in_name(
             [curve.get_base_name_and_suffixes() for curve in selected_curves.values()]
         )
-
 
         for curve in (lower_fence, upper_fence, curve_median):
             curve.set_name_base(representative_base_name)
@@ -917,7 +912,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 new_curve.add_name_suffix(suffix)
             new_curve.add_name_suffix(
                 f"interpolated to {settings.processing_interpolation_ppo} ppo")
-            to_insert[i_curve + len(to_insert) + 1] = new_curve
+            to_insert[i_curve + 1] = new_curve
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
@@ -965,7 +960,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 new_curve.add_name_suffix(suffix)
             new_curve.add_name_suffix(
                 f"smoothed 1/{settings.smoothing_bandwidth}")
-            to_insert[i_curve + len(to_insert) + 1] = new_curve
+            to_insert[i_curve + 1] = new_curve
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
@@ -1171,7 +1166,7 @@ class ProcessingDialog(qtw.QDialog):
     global settings
     signal_processing_request = qtc.Signal(str)
 
-    def __init__(self, selected_curves, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         self.setWindowTitle("Processing Menu")
