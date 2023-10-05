@@ -736,7 +736,7 @@ class CurveAnalyze(qtw.QMainWindow):
         index = self.qlistwidget_for_curves.row(item)
         self.signal_flash_curve_request.emit(index)
 
-    def update_visibilities_of_graph_curves(self, indexes_and_curves):
+    def update_visibilities_of_graph_curves(self, indexes_and_curves=None):
         if not indexes_and_curves:
             visibility_states = {i: curve.is_visible()
                                  for i, curve in enumerate(self.curves)}
