@@ -712,7 +712,7 @@ class CurveAnalyze(qtw.QMainWindow):
             item.setFont(font)
             curve.set_visible(False)
 
-        self.send_visibility_states_to_graph()
+        self.update_visibilities_of_graph_curves(indexes_and_curves)
 
     def show_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
@@ -730,15 +730,19 @@ class CurveAnalyze(qtw.QMainWindow):
 
             curve.set_visible(True)
 
-        self.send_visibility_states_to_graph()
+        self.update_visibilities_of_graph_curves(indexes_and_curves)
 
     def _flash_curve(self, item: qtw.QListWidgetItem):
         index = self.qlistwidget_for_curves.row(item)
         self.signal_flash_curve_request.emit(index)
 
-    def send_visibility_states_to_graph(self):
-        visibility_states = {i: curve.is_visible()
-                             for i, curve in enumerate(self.curves)}
+    def update_visibilities_of_graph_curves(self, indexes_and_curves):
+        if not indexes_and_curves:
+            visibility_states = {i: curve.is_visible()
+                                 for i, curve in enumerate(self.curves)}
+        else:
+            visibility_states = {i: curve.is_visible()
+                                 for i, curve in indexes_and_curves.items()}
         self.graph.hide_show_line2d(visibility_states)
 
     def open_processing_dialog(self):
