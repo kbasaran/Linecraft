@@ -17,7 +17,7 @@ __email__ = "kbasaran@gmail.com"
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.1.1rc0",
+                   "version": "0.1.1",
                    "description": "Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
                    "icon_path": r".\logo\icon.ico",
@@ -184,8 +184,8 @@ class CurveAnalyze(qtw.QMainWindow):
         menu_bar = self.menuBar()
         
         file_menu = menu_bar.addMenu("File")
-        load_action = file_menu.addAction("Load..", self._load_or_save_clicked)
-        save_action = file_menu.addAction("Save..", self._load_or_save_clicked)
+        load_action = file_menu.addAction("Load state..", self.pick_a_file_and_load_widget_state_from_it)
+        save_action = file_menu.addAction("Save state..", self.save_widget_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
         settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
@@ -303,7 +303,7 @@ class CurveAnalyze(qtw.QMainWindow):
             return None
 
     def get_selected_curve_indexes(self) -> list:
-        """Get a list of indexes for the curves currently selected in the list widget"""
+        """Get a list of indexes for the curves currently selected in the list widget. MAY NOT BE SORTED!"""
         selected_list_items = self.qlistwidget_for_curves.selectedItems()
         indexes = [self.qlistwidget_for_curves.row(
             list_item) for list_item in selected_list_items]
@@ -482,7 +482,7 @@ class CurveAnalyze(qtw.QMainWindow):
             else:
                 indexes_to_remove = self.get_selected_curve_indexes()
 
-        for i in reversed(indexes_to_remove):
+        for i in sorted(indexes_to_remove, reverse=True):
             self.qlistwidget_for_curves.takeItem(i)
             self.curves.pop(i)
 
@@ -630,8 +630,7 @@ class CurveAnalyze(qtw.QMainWindow):
             else:
                 # multiple selections
                 self._user_input_widgets["set_reference_pushbutton"].setChecked(False)
-                self.signal_toggle_reference_curve_request.emit(None)
-
+                self.signal_bad_beep.emit()
 
         elif not checked:
             # find back the reference curve
@@ -654,7 +653,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 reference_item.setText(curve.get_full_name())
 
                 # Update graph
-                self.graph.toggle_reference_curve(None)
+                self.signal_toggle_reference_curve_request.emit(None)
 
 
     def _add_single_curve(self, i_insert: int, curve: signal_tools.Curve, update_figure: bool = True, line2d_kwargs={}):
@@ -713,7 +712,7 @@ class CurveAnalyze(qtw.QMainWindow):
             item.setFont(font)
             curve.set_visible(False)
 
-        self.send_visibility_states_to_graph()
+        self.update_visibilities_of_graph_curves(indexes_and_curves)
 
     def show_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
@@ -731,26 +730,27 @@ class CurveAnalyze(qtw.QMainWindow):
 
             curve.set_visible(True)
 
-        self.send_visibility_states_to_graph()
+        self.update_visibilities_of_graph_curves(indexes_and_curves)
 
     def _flash_curve(self, item: qtw.QListWidgetItem):
         index = self.qlistwidget_for_curves.row(item)
         self.signal_flash_curve_request.emit(index)
 
-    def send_visibility_states_to_graph(self):
-        visibility_states = {i: curve.is_visible()
-                             for i, curve in enumerate(self.curves)}
+    def update_visibilities_of_graph_curves(self, indexes_and_curves=None):
+        if not indexes_and_curves:
+            visibility_states = {i: curve.is_visible()
+                                 for i, curve in enumerate(self.curves)}
+        else:
+            visibility_states = {i: curve.is_visible()
+                                 for i, curve in indexes_and_curves.items()}
         self.graph.hide_show_line2d(visibility_states)
 
     def open_processing_dialog(self):
         if self.return_false_and_beep_if_no_curve_selected():
             return
 
-        processing_dialog = ProcessingDialog(
-            self.get_selected_curves(), parent=self)
-        processing_dialog.signal_processing_request.connect(
-            self._processing_dialog_return)
-
+        processing_dialog = ProcessingDialog(parent=self)
+        processing_dialog.signal_processing_request.connect(self._processing_dialog_return)
         processing_dialog.exec()
 
     def _processing_dialog_return(self, processing_function_name):
@@ -759,9 +759,9 @@ class CurveAnalyze(qtw.QMainWindow):
 
         if "to_insert" in results.keys():
             # sort the dict by highest key value first
-            for i, curve in sorted(results["to_insert"].items()):
+            for i_to_insert, curve in sorted(results["to_insert"].items(), reverse=True):
                 _ = self._add_single_curve(
-                    i, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
+                    i_to_insert, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
             self.graph.update_figure()
             to_beep = True
 
@@ -793,13 +793,12 @@ class CurveAnalyze(qtw.QMainWindow):
         curve_mean.add_name_suffix(f"mean, {length_curves} curves")
         curve_median.add_name_suffix(f"median, {length_curves} curves")
 
-        i_insert = 0
-        to_insert = {}
+        to_insert = []
         if settings.mean_selected:
-            to_insert[i_insert] = curve_mean
-            i_insert += 1
+            to_insert.append(curve_mean)
         if settings.median_selected:
-            to_insert[i_insert] = curve_median
+            to_insert.append(curve_median)
+        to_insert = dict(zip([*range(len(to_insert))], to_insert))
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
@@ -821,7 +820,6 @@ class CurveAnalyze(qtw.QMainWindow):
         representative_base_name = find_longest_match_in_name(
             [curve.get_base_name_and_suffixes() for curve in selected_curves.values()]
         )
-
 
         for curve in (lower_fence, upper_fence, curve_median):
             curve.set_name_base(representative_base_name)
@@ -918,7 +916,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 new_curve.add_name_suffix(suffix)
             new_curve.add_name_suffix(
                 f"interpolated to {settings.processing_interpolation_ppo} ppo")
-            to_insert[i_curve + len(to_insert) + 1] = new_curve
+            to_insert[i_curve + 1] = new_curve
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
@@ -966,7 +964,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 new_curve.add_name_suffix(suffix)
             new_curve.add_name_suffix(
                 f"smoothed 1/{settings.smoothing_bandwidth}")
-            to_insert[i_curve + len(to_insert) + 1] = new_curve
+            to_insert[i_curve + 1] = new_curve
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
@@ -987,10 +985,9 @@ class CurveAnalyze(qtw.QMainWindow):
         self.graph.update_figure(recalculate_limits=False)
         self.signal_good_beep.emit()
 
-    def _load_or_save_clicked(self):
+    def _not_implemented_popup(self):
         message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                       "Feature not Implemented",
-                                      "Save and load not available at this moment.",
                                       )
         message_box.setStandardButtons(qtw.QMessageBox.Ok)
         message_box.exec()
@@ -1025,7 +1022,7 @@ class CurveAnalyze(qtw.QMainWindow):
         text_box = ResultTextBox("About", result_text, monospace=False)
         text_box.exec()
 
-    def collect_states(self):
+    def get_widget_state(self):
         ax = self.graph.ax
         graph_info = {"title": ax.get_title(),
                       "xlabel": ax.get_xlabel(),
@@ -1035,9 +1032,9 @@ class CurveAnalyze(qtw.QMainWindow):
                       }
 
         def collect_line2d_info(line):
-            line_info = {"linestyle": line.get_style(),
+            line_info = {"linestyle": line.get_linestyle(),
                          "drawstyle": line.get_drawstyle(),
-                         "linewidth": line.get_width(),
+                         "linewidth": line.get_linewidth(),
                          "color": line.get_color(),
                          "marker": line.get_marker(),
                          "markersize": line.get_markersize(),
@@ -1063,7 +1060,7 @@ class CurveAnalyze(qtw.QMainWindow):
         package = pickle.dumps((graph_info, lines_info, curves_info), protocol=5)
         return package
 
-    def recover_states(self, package):
+    def set_widget_state(self, package):
         graph_info, lines_info, curves_info = pickle.loads(package)
 
         # ---- delete all lines first
@@ -1087,6 +1084,53 @@ class CurveAnalyze(qtw.QMainWindow):
             self._add_single_curve(None, curve, update_figure=False, line2d_kwargs=line_info)
         
         self.graph.update_figure()
+
+    def save_widget_state_to_file(self):
+        global settings
+        
+        path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save state to a file..',
+                                                          dir=settings.last_used_folder,
+                                                          filter='Linecraft files (*.lc)',
+                                                          )
+        # path_unverified.setDefaultSuffix("lc") not available for getSaveFileName
+        
+        # filter not working as expected nautilus. Saves files without file extension.
+        try:
+            file = path_unverified[0]
+            if file:  # if we received a string
+                file = (file + ".lc" if file[-3:] != ".lc" else file)
+                assert os.path.isdir(os.path.dirname(file))
+            else:
+                return  # nothing was selected, pick file canceled
+        except:
+            raise NotADirectoryError(file)
+
+        settings.update_attr("last_used_folder", os.path.dirname(file))
+        package = self.get_widget_state()
+        with open(file, "wb") as f:
+            f.write(package)
+        self.signal_good_beep.emit()
+
+    def pick_a_file_and_load_widget_state_from_it(self):
+        file = qtw.QFileDialog.getOpenFileName(self, caption='Get state from a save file..',
+                                               dir=settings.last_used_folder,
+                                               filter='Linecraft files (*.lc)',
+                                               )[0]
+        if file:
+            self.load_widget_state_from_file(file)
+        else:
+            pass  # canceled file select        
+
+    def load_widget_state_from_file(self, file):
+        try:
+            os.path.isfile(file)
+        except:
+            raise FileNotFoundError(file)
+
+        settings.update_attr("last_used_folder", os.path.dirname(file))
+        with open(file, "rb") as f:
+            self.set_widget_state(f.read())
+        self.signal_good_beep.emit()
 
 
 class ResultTextBox(qtw.QDialog):
@@ -1126,7 +1170,7 @@ class ProcessingDialog(qtw.QDialog):
     global settings
     signal_processing_request = qtc.Signal(str)
 
-    def __init__(self, selected_curves, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         self.setWindowTitle("Processing Menu")
@@ -1619,11 +1663,30 @@ class AutoImporter(qtc.QThread):
 def test_and_demo(window):
     pass
 
+def parse_args(app_definitions):
+    import argparse
+
+    description = (
+        f"{app_definitions['app_name']} - {app_definitions['copyright']}"
+        "\nThis program comes with ABSOLUTELY NO WARRANTY"
+        "\nThis is free software, and you are welcome to redistribute it"
+        "\nunder certain conditions. See LICENSE file for more details."
+    )
+
+    parser = argparse.ArgumentParser(prog="python main.py",
+                                     description=description,
+                                     epilog={app_definitions['website']},
+                                     )
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+                        help="Path to a '*.lc' file. This will open a saved state.")
+
+    return parser.parse_args()
 
 def main():
     global settings, app_definitions
 
     settings = pwi.Settings(app_definitions["app_name"])
+    args = parse_args(app_definitions)
 
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
@@ -1645,6 +1708,9 @@ def main():
     app.aboutToQuit.connect(sound_engine_thread.exit)
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
+
+    if args.infile:
+        mw.load_widget_state_from_file(args.infile.name)
 
     mw.show()
     app.exec()
