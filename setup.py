@@ -20,7 +20,7 @@ build_exe_options = {
 # base="Win32GUI" should be used only for Windows GUI app
 base = "Win32GUI" if sys.platform == "win32" else None
 
-executables=[Executable("main.pyw",
+executables=[Executable("main.py",
                         copyright=app_definitions["copyright"],
                         base=base,
                         shortcut_name=app_definitions["app_name"] + " v" + app_definitions["version"],
