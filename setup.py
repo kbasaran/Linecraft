@@ -4,14 +4,15 @@
 import sys
 from cx_Freeze import setup, Executable
 from main import app_definitions
+from pathlib import Path
 # https://cx-freeze.readthedocs.io/en/stable/setup_script.html
 
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
     "packages": ["scipy", "numpy"],
     "include_files": [
-        (".\LICENSE", ".\LICENSE"),
-        (".\README.md", ".\README.md"),
+        (str(Path("./LICENSE")), str(Path("./LICENSE"))),
+        (str(Path("./README.md")), str(Path("./README.md"))),
 	(app_definitions["icon_path"], app_definitions["icon_path"]),
         ],
     "silent_level": 1,
