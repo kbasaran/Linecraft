@@ -18,13 +18,14 @@ __email__ = "kbasaran@gmail.com"
 
 # from datetime import date
 # today = date.today()
+from pathlib import Path
 
 app_definitions = {"app_name": "Linecraft",
                    "version": "0.1.1",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
-                   "icon_path": r".\logo\icon.ico",
+                   "icon_path": str(Path("./logo/icon.ico")),
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
                    "email": "kbasaran@gmail.com",
