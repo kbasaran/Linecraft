@@ -16,11 +16,16 @@ __email__ = "kbasaran@gmail.com"
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# from datetime import date
+# today = date.today()
+from pathlib import Path
+
 app_definitions = {"app_name": "Linecraft",
                    "version": "0.1.1",
+                   # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
-                   "icon_path": r".\logo\icon.ico",
+                   "icon_path": str(Path("./logo/icon.ico")),
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
                    "email": "kbasaran@gmail.com",
@@ -48,7 +53,6 @@ from functools import partial
 import matplotlib as mpl
 from tabulate import tabulate
 from io import StringIO
-from datetime import date
 import pickle
 
 
@@ -59,8 +63,7 @@ logging.basicConfig(level=logging.INFO)
 # https://docs.spyder-ide.org/current/panes/outline.html
 
 
-today = date.today()
-version = "Test build " + today.strftime("%Y.%m.%d")
+
 
 
 def find_longest_match_in_name(names: list) -> str:
@@ -759,9 +762,18 @@ class CurveAnalyze(qtw.QMainWindow):
 
         if "to_insert" in results.keys():
             # sort the dict by highest key value first
-            for i_to_insert, curve in sorted(results["to_insert"].items(), reverse=True):
-                _ = self._add_single_curve(
-                    i_to_insert, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
+            for i_to_insert, curves in sorted(results["to_insert"].items(), reverse=True):
+                if isinstance(curves, (list, tuple)):
+                    for curve in reversed(curves):
+                        _ = self._add_single_curve(
+                            i_to_insert, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
+                elif isinstance(curves, signal_tools.Curve):
+                    curve = curves
+                    _ = self._add_single_curve(
+                        i_to_insert, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
+                else:
+                    raise TypeError(f"Invalid data type to insert: {type(curves)}")
+
             self.graph.update_figure()
             to_beep = True
 
@@ -793,16 +805,15 @@ class CurveAnalyze(qtw.QMainWindow):
         curve_mean.add_name_suffix(f"mean, {length_curves} curves")
         curve_median.add_name_suffix(f"median, {length_curves} curves")
 
-        to_insert = []
+        result_curves = []
         if settings.mean_selected:
-            to_insert.append(curve_mean)
+            result_curves.append(curve_mean)
         if settings.median_selected:
-            to_insert.append(curve_median)
-        to_insert = dict(zip([*range(len(to_insert))], to_insert))
+            result_curves.append(curve_median)
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
-        return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
+        return {"to_insert": {0: result_curves}, "line2d_kwargs": line2d_kwargs}
 
     def _outlier_detection(self):
         selected_curves = self.get_selected_curves(as_dict=True)
@@ -812,38 +823,34 @@ class CurveAnalyze(qtw.QMainWindow):
             raise ValueError(
                 "A minimum of 3 curves is needed for this analysis.")
 
-        lower_fence, curve_median, upper_fence, outlier_indexes = signal_tools.iqr_analysis(
+        curve_median, lower_fence, upper_fence, outlier_indexes = signal_tools.iqr_analysis(
             {i: curve.get_xy() for i, curve in selected_curves.items()},
             settings.outlier_fence_iqr,
-        )
+        )        
+        result_curves = curve_median, lower_fence, upper_fence
 
         representative_base_name = find_longest_match_in_name(
             [curve.get_base_name_and_suffixes() for curve in selected_curves.values()]
         )
 
-        for curve in (lower_fence, upper_fence, curve_median):
+        for curve in result_curves:
             curve.set_name_base(representative_base_name)
+        curve_median.add_name_suffix(f"median, {length_curves} curves")
         lower_fence.add_name_suffix(f"-{settings.outlier_fence_iqr:.1f}xIQR, {length_curves} curves")
         upper_fence.add_name_suffix(f"+{settings.outlier_fence_iqr:.1f}xIQR, {length_curves} curves")
-        curve_median.add_name_suffix(f"median, {length_curves} curves")
 
         if settings.outlier_action == 1 and outlier_indexes:  # Hide
             self.hide_curves(indexes=outlier_indexes)
-            for curve in (lower_fence, upper_fence, curve_median):
+            for curve in result_curves:
                 curve.add_name_suffix("calculated before hiding outliers")
         elif settings.outlier_action == 2 and outlier_indexes:  # Remove
             self.remove_curves(indexes=outlier_indexes)
-            for curve in (lower_fence, upper_fence, curve_median):
+            for curve in result_curves:
                 curve.add_name_suffix("calculated before removing outliers")
-
-        to_insert = {}
-        to_insert[0] = curve_median
-        to_insert[1] = upper_fence
-        to_insert[2] = lower_fence
 
         line2d_kwargs = {"color": "k", "linestyle": "--"}
 
-        return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
+        return {"to_insert": {0: result_curves}, "line2d_kwargs": line2d_kwargs}
 
     def _show_best_fits(self):
         selected_curves = self.get_selected_curves(as_dict=True)
@@ -904,7 +911,7 @@ class CurveAnalyze(qtw.QMainWindow):
     def _interpolate_curves(self):
         selected_curves = self.get_selected_curves(as_dict=True)
 
-        to_insert = {}
+        result_curves = {}
 
         for i_curve, curve in selected_curves.items():
             xy = signal_tools.interpolate_to_ppo(
@@ -916,16 +923,16 @@ class CurveAnalyze(qtw.QMainWindow):
                 new_curve.add_name_suffix(suffix)
             new_curve.add_name_suffix(
                 f"interpolated to {settings.processing_interpolation_ppo} ppo")
-            to_insert[i_curve + 1] = new_curve
+            result_curves[i_curve + 1] = new_curve
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
-        return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
+        return {"to_insert": result_curves, "line2d_kwargs": line2d_kwargs}
 
     def _smoothen_curves(self):
         selected_curves = self.get_selected_curves(as_dict=True)
 
-        to_insert = {}
+        result_curves = {}
 
         for i_curve, curve in selected_curves.items():
 
@@ -964,11 +971,11 @@ class CurveAnalyze(qtw.QMainWindow):
                 new_curve.add_name_suffix(suffix)
             new_curve.add_name_suffix(
                 f"smoothed 1/{settings.smoothing_bandwidth}")
-            to_insert[i_curve + 1] = new_curve
+            result_curves[i_curve + 1] = new_curve
 
         line2d_kwargs = {"color": "k", "linestyle": "-"}
 
-        return {"to_insert": to_insert, "line2d_kwargs": line2d_kwargs}
+        return {"to_insert": result_curves, "line2d_kwargs": line2d_kwargs}
 
     def open_settings_dialog(self):
         settings_dialog = SettingsDialog(parent=self)
@@ -1663,6 +1670,7 @@ class AutoImporter(qtc.QThread):
 def test_and_demo(window):
     pass
 
+
 def parse_args(app_definitions):
     import argparse
 
@@ -1681,6 +1689,7 @@ def parse_args(app_definitions):
                         help="Path to a '*.lc' file. This will open a saved state.")
 
     return parser.parse_args()
+
 
 def main():
     global settings, app_definitions
@@ -1714,8 +1723,6 @@ def main():
 
     mw.show()
     app.exec()
-
-    test_and_demo(mw)
 
 if __name__ == "__main__":
     main()
