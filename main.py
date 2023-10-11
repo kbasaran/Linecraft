@@ -21,9 +21,9 @@ __email__ = "kbasaran@gmail.com"
 from pathlib import Path
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.1.1",
+                   "version": "0.1.2rc0",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
-                   "description": "Frequency response plotting and statistics",
+                   "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
                    "icon_path": str(Path("./logo/icon.ico")),
                    "author": "Kerem Basaran",
@@ -54,16 +54,11 @@ import matplotlib as mpl
 from tabulate import tabulate
 from io import StringIO
 import pickle
-
-
 import logging
-logging.basicConfig(level=logging.INFO)
+
 
 # Guide for special comments
 # https://docs.spyder-ide.org/current/panes/outline.html
-
-
-
 
 
 def find_longest_match_in_name(names: list) -> str:
@@ -1128,7 +1123,9 @@ class CurveAnalyze(qtw.QMainWindow):
         if file:
             self.load_widget_state_from_file(file)
         else:
-            pass  # canceled file select        
+            pass  # canceled file select
+
+        self.signal_good_beep.emit()
 
     def load_widget_state_from_file(self, file):
         try:
@@ -1139,7 +1136,6 @@ class CurveAnalyze(qtw.QMainWindow):
         settings.update_attr("last_used_folder", os.path.dirname(file))
         with open(file, "rb") as f:
             self.set_widget_state(f.read())
-        self.signal_good_beep.emit()
 
 
 class ResultTextBox(qtw.QDialog):
@@ -1687,8 +1683,10 @@ def parse_args(app_definitions):
                                      description=description,
                                      epilog={app_definitions['website']},
                                      )
-    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+    parser.add_argument('infile', nargs="?", type=argparse.FileType('r'), action="store",
                         help="Path to a '*.lc' file. This will open a saved state.")
+    parser.add_argument('-d', '--debuglevel', nargs="?", default="warning", action="store",
+                        help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
 
@@ -1699,9 +1697,15 @@ def main():
     settings = pwi.Settings(app_definitions["app_name"])
     args = parse_args(app_definitions)
 
+    log_level = getattr(logging, args.debuglevel.upper(), 30)  # 30 is warning
+    log_filename = os.path.join(os.getcwd(), f"{app_definitions['app_name'].lower()}.log")
+    logging.basicConfig(filename=log_filename, level=log_level, force=True)
+    # had to force this
+    # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
+
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
-        # there is a new recommendation with qApp but how to dod the sys.argv with that?
+        # there is a new recommendation with qApp but how to do the sys.argv with that?
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
         app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
 
