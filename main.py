@@ -1090,6 +1090,7 @@ class CurveAnalyze(qtw.QMainWindow):
             
             self._add_single_curve(None, curve, update_figure=False, line2d_kwargs=line_info)
         
+        self.update_visibilities_of_graph_curves()
         self.graph.update_figure()
 
     def save_widget_state_to_file(self):
@@ -1101,10 +1102,11 @@ class CurveAnalyze(qtw.QMainWindow):
                                                           )
         # path_unverified.setDefaultSuffix("lc") not available for getSaveFileName
         
-        # filter not working as expected nautilus. Saves files without file extension.
         try:
             file = path_unverified[0]
             if file:  # if we received a string
+                # Filter not working as expected in nautilus. Saves files without including the extension.
+                # Therefore added this seciton.
                 file = (file + ".lc" if file[-3:] != ".lc" else file)
                 assert os.path.isdir(os.path.dirname(file))
             else:
