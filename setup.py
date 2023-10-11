@@ -20,7 +20,8 @@ build_exe_options = {
 
 bdist_msi_options = {
     "extensions": [{"extension": "lc",
-                    "verb": "load state",
+                    "verb": "open",
+                    "argument": '"%1"',
                     "executable": "main.exe",
                     }]
                   }
