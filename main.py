@@ -21,7 +21,7 @@ __email__ = "kbasaran@gmail.com"
 from pathlib import Path
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.1.2rc0",
+                   "version": "0.1.2",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
@@ -1697,35 +1697,45 @@ def main():
     settings = pwi.Settings(app_definitions["app_name"])
     args = parse_args(app_definitions)
 
-    log_level = getattr(logging, args.debuglevel.upper(), 30)  # 30 is warning
+    # ---- Setup logging
+    log_level = getattr(logging, args.debuglevel.upper(), logging.WARNING)
+    logging.info(f"Setting log level to: {log_level}")
     home_folder = os.path.expanduser("~")
     log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
     logging.basicConfig(filename=log_filename, level=log_level, force=True)
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
 
+    # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to do the sys.argv with that?
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
         app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
 
+    # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerUser(app)
     sys.excepthook = error_handler.excepthook
 
+    # ---- Create main window
     mw = CurveAnalyze()
     mw.setWindowTitle(app_definitions["app_name"])
 
+    # ---- Create sound engine
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
     sound_engine_thread.start(qtc.QThread.HighPriority)
+    
+    # ---- Connect signals
     app.aboutToQuit.connect(sound_engine.release_all)
     app.aboutToQuit.connect(sound_engine_thread.exit)
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
+    # ---- Are we loading a state file?
     if args.infile:
+        logging.info(f"Starting application with argument infile: {args.infile}")
         mw.load_widget_state_from_file(args.infile.name)
 
     mw.show()
