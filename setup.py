@@ -22,8 +22,8 @@ bdist_msi_options = {
     "extensions": [{"extension": "lc",
                     "verb": "load state",
                     "executable": "main.exe",
-                    }
-                   ]}
+                    }]
+                  }
 
 # base="Win32GUI" should be used only for Windows GUI app
 base = "Win32GUI" if sys.platform == "win32" else None

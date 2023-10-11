@@ -1698,7 +1698,8 @@ def main():
     args = parse_args(app_definitions)
 
     log_level = getattr(logging, args.debuglevel.upper(), 30)  # 30 is warning
-    log_filename = os.path.join(os.getcwd(), f"{app_definitions['app_name'].lower()}.log")
+    home_folder = os.path.expanduser("~")
+    log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
     logging.basicConfig(filename=log_filename, level=log_level, force=True)
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
