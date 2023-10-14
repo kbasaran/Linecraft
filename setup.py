@@ -18,6 +18,14 @@ build_exe_options = {
     "silent_level": 1,
 }
 
+bdist_msi_options = {
+    "extensions": [{"extension": "lc",
+                    "verb": "open",
+                    "argument": '"%1"',
+                    "executable": "main.exe",
+                    }]
+                  }
+
 # base="Win32GUI" should be used only for Windows GUI app
 base = "Win32GUI" if sys.platform == "win32" else None
 
@@ -34,6 +42,6 @@ setup(
     name=app_definitions["app_name"],
     version=app_definitions["version"],
     description=app_definitions["description"],
-    options={"build_exe": build_exe_options},
+    options={"build_exe": build_exe_options, "bdist_msi": bdist_msi_options},
     executables=executables,
 )

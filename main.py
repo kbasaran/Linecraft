@@ -21,9 +21,9 @@ __email__ = "kbasaran@gmail.com"
 from pathlib import Path
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.1.1",
+                   "version": "0.1.3",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
-                   "description": "Frequency response plotting and statistics",
+                   "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
                    "icon_path": str(Path("./logo/icon.ico")),
                    "author": "Kerem Basaran",
@@ -54,16 +54,11 @@ import matplotlib as mpl
 from tabulate import tabulate
 from io import StringIO
 import pickle
-
-
 import logging
-logging.basicConfig(level=logging.INFO)
+
 
 # Guide for special comments
 # https://docs.spyder-ide.org/current/panes/outline.html
-
-
-
 
 
 def find_longest_match_in_name(names: list) -> str:
@@ -106,7 +101,7 @@ def find_longest_match_in_name(names: list) -> str:
 
 
 class CurveAnalyze(qtw.QMainWindow):
-    global settings, app_definitions
+    global settings, app_definitions, logger
 
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
@@ -302,7 +297,7 @@ class CurveAnalyze(qtw.QMainWindow):
         if new_curve.is_curve():
             return new_curve
         else:
-            logging.debug("Unrecognized curve object")
+            logger.debug("Unrecognized curve object")
             return None
 
     def get_selected_curve_indexes(self) -> list:
@@ -313,12 +308,17 @@ class CurveAnalyze(qtw.QMainWindow):
         return indexes
 
     def get_selected_curves(self, as_dict: bool = False) -> (list, dict):
+        """May NOT be SORTED"""
         selected_indexes = self.get_selected_curve_indexes()
 
         if as_dict:
             return {i: self.curves[i] for i in selected_indexes}
         else:
             return [self.curves[i] for i in selected_indexes]
+
+    def get_selected_curves_sorted(self) -> list:
+        curves = self.get_selected_curves(as_dict=True)
+        return sorted(curves.items()).values()
 
     def count_selected_curves(self) -> int:
         selected_indexes = self.get_selected_curve_indexes()
@@ -337,7 +337,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
         new_order_of_qlist_items = [*range(len(self.curves))]
         # each number in the list is the index before location change. index in the list is the new location.
-        for i_within_selected, (i_before, curve) in enumerate(selected_indexes_and_curves.items()):
+        for i_within_selected, (i_before, curve) in enumerate(sorted(selected_indexes_and_curves.items())):
             # i_within_selected is the index within the selected curves
             # i_before is the index on the complete curves list
             i_after = i_insert + i_within_selected
@@ -558,13 +558,13 @@ class CurveAnalyze(qtw.QMainWindow):
             signal_tools.check_if_sorted_and_valid(df.columns)
             df.columns = df.columns.astype(float)
         except ValueError as e:
-            logging.info(str(e))
+            logger.info(str(e))
             self.signal_bad_beep.emit()
             return
 
         # ---- Validate size
         if len(df.index) < 1:
-            logging.info("Import does not have any curves to put on graph.")
+            logger.info("Import does not have any curves to put on graph.")
             self.signal_bad_beep.emit()
             return
     
@@ -575,7 +575,7 @@ class CurveAnalyze(qtw.QMainWindow):
             raise ValueError("Your dataset contains values that could not be interpreted as numbers.")
             return
 
-        logging.info(df.info)
+        logger.info(df.info)
 
         # ---- put on the graph
         for name, values in df.iterrows():
@@ -892,7 +892,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 df = df / weighing_normalizer  # residuals squared, weighted. table is per frequency, per speaker.
 
             else:
-                logging.warning(
+                logger.warning(
                     "Critical frequency range does not contain any of the frequency points used in best fit")
 
             # --- Calculate standard deviation of weighted residuals
@@ -1090,6 +1090,7 @@ class CurveAnalyze(qtw.QMainWindow):
             
             self._add_single_curve(None, curve, update_figure=False, line2d_kwargs=line_info)
         
+        self.update_visibilities_of_graph_curves()
         self.graph.update_figure()
 
     def save_widget_state_to_file(self):
@@ -1101,10 +1102,11 @@ class CurveAnalyze(qtw.QMainWindow):
                                                           )
         # path_unverified.setDefaultSuffix("lc") not available for getSaveFileName
         
-        # filter not working as expected nautilus. Saves files without file extension.
         try:
             file = path_unverified[0]
             if file:  # if we received a string
+                # Filter not working as expected in nautilus. Saves files without including the extension.
+                # Therefore added this seciton.
                 file = (file + ".lc" if file[-3:] != ".lc" else file)
                 assert os.path.isdir(os.path.dirname(file))
             else:
@@ -1126,7 +1128,9 @@ class CurveAnalyze(qtw.QMainWindow):
         if file:
             self.load_widget_state_from_file(file)
         else:
-            pass  # canceled file select        
+            pass  # canceled file select
+
+        self.signal_good_beep.emit()
 
     def load_widget_state_from_file(self, file):
         try:
@@ -1137,7 +1141,6 @@ class CurveAnalyze(qtw.QMainWindow):
         settings.update_attr("last_used_folder", os.path.dirname(file))
         with open(file, "rb") as f:
             self.set_widget_state(f.read())
-        self.signal_good_beep.emit()
 
 
 class ResultTextBox(qtw.QDialog):
@@ -1664,7 +1667,7 @@ class AutoImporter(qtc.QThread):
             except pyperclip.PyperclipTimeoutException:
                 pass
             except Exception as e:
-                logging.warning(e)
+                logger.warning(e)
 
 
 def test_and_demo(window):
@@ -1685,40 +1688,61 @@ def parse_args(app_definitions):
                                      description=description,
                                      epilog={app_definitions['website']},
                                      )
-    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+    parser.add_argument('infile', nargs="?", type=argparse.FileType('r'), action="store",
                         help="Path to a '*.lc' file. This will open a saved state.")
+    parser.add_argument('-d', '--debuglevel', nargs="?", default="warning", action="store",
+                        help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
 
 
 def main():
-    global settings, app_definitions
+    global settings, app_definition, logger
 
     settings = pwi.Settings(app_definitions["app_name"])
     args = parse_args(app_definitions)
 
+    # ---- Setup logging
+    log_level = getattr(logging, args.debuglevel.upper(), logging.WARNING)
+    home_folder = os.path.expanduser("~")
+    log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
+    logging.basicConfig(filename=log_filename, level=log_level, force=True)
+    logger = logging.getLogger()
+    logger.info(f"Setting log level to: {log_level}")
+
+    # had to force this
+    # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
+
+    # ---- Start QApplication
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
-        # there is a new recommendation with qApp but how to dod the sys.argv with that?
+        # there is a new recommendation with qApp but how to do the sys.argv with that?
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
         app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
 
+    # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerUser(app)
     sys.excepthook = error_handler.excepthook
 
+    # ---- Create main window
     mw = CurveAnalyze()
     mw.setWindowTitle(app_definitions["app_name"])
 
+    # ---- Create sound engine
     sound_engine = pwi.SoundEngine(settings)
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
     sound_engine_thread.start(qtc.QThread.HighPriority)
+    
+    # ---- Connect signals
     app.aboutToQuit.connect(sound_engine.release_all)
     app.aboutToQuit.connect(sound_engine_thread.exit)
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
+    # ---- Are we loading a state file?
     if args.infile:
+        logger.info(f"Starting application with argument infile: {args.infile}")
         mw.load_widget_state_from_file(args.infile.name)
 
     mw.show()

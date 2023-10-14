@@ -30,7 +30,11 @@ from generictools import signal_tools
 import pickle
 
 import logging
-logging.basicConfig(level=logging.INFO)
+if __name__ == "__main__":
+    logger = logging.getLogger(__name__)
+else:
+    logging.basicConfig(level=logging.WARNING)
+    logger = logging.getLogger()
 
 
 @dataclass
@@ -361,9 +365,9 @@ class UserForm(qtw.QWidget):
 
             values[key] = obj_value
 
-        logging.debug("Return of 'get_form_values")
+        logger.debug("Return of 'get_form_values")
         for val, key in values.items():
-            logging.debug(val, type(val), key, type(key))
+            logger.debug(val, type(val), key, type(key))
 
         return values
 
@@ -415,10 +419,10 @@ class ErrorHandlerDeveloper:
         self.app = app
     
     def excepthook(self, etype, value, tb):
-        error_msg = ''.join(traceback.format_exception(etype, value, tb))
+        error_msg_developer = ''.join(traceback.format_exception(etype, value, tb))
         message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
                                       "Error    :(",
-                                      error_msg +
+                                      error_msg_developer +
                                       "\n\nThis event may be logged unless ignore is chosen.",
                                       )
         message_box.addButton(qtw.QMessageBox.Ignore)
@@ -427,7 +431,7 @@ class ErrorHandlerDeveloper:
         message_box.setEscapeButton(qtw.QMessageBox.Ignore)
         message_box.setDefaultButton(qtw.QMessageBox.Close)
     
-        close_button.clicked.connect(logging.warning(error_msg))
+        close_button.clicked.connect(logger.warning(error_msg_developer))
     
         message_box.exec()
 
@@ -436,11 +440,12 @@ class ErrorHandlerUser:
         self.app = app
     
     def excepthook(self, etype, value, tb):
+        error_msg_developer = ''.join(traceback.format_exception(etype, value, tb))
         error_info = traceback.format_exception(etype, value, tb)
-        error_msg = error_info[-2] + "\n\n" + error_info[-1]
+        error_msg_short = error_info[-2] + "\n\n" + error_info[-1]
         message_box = qtw.QMessageBox(qtw.QMessageBox.Warning,
                                       "Error    :(",
-                                      error_msg +
+                                      error_msg_short +
                                       "\n\nThis event may be logged unless ignore is chosen.",
                                       )
         message_box.addButton(qtw.QMessageBox.Ignore)
@@ -449,7 +454,7 @@ class ErrorHandlerUser:
         message_box.setEscapeButton(qtw.QMessageBox.Ignore)
         message_box.setDefaultButton(qtw.QMessageBox.Close)
     
-        close_button.clicked.connect(logging.warning(error_msg))
+        close_button.clicked.connect(logger.warning(error_msg_developer))
     
         message_box.exec()
 
