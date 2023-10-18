@@ -48,7 +48,7 @@ from generictools.graphing_widget import MatplotlibWidget
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
 from generictools import signal_tools
-import personalized_widgets as pwi
+import generictools.personalized_widgets as pwi
 import pyperclip  # must install xclip on Linux together with this!!
 from functools import partial
 import matplotlib as mpl
