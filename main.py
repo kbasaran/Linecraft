@@ -198,6 +198,7 @@ class CurveAnalyze(qtw.QMainWindow):
         super().__init__()
         self.setWindowTitle(app_definitions["app_name"])
         self._create_core_objects()
+        self._create_menu_bar()
         self._create_widgets()
         self._place_widgets()
         self._make_connections()
@@ -214,6 +215,19 @@ class CurveAnalyze(qtw.QMainWindow):
     def _create_core_objects(self):
         self._user_input_widgets = dict()  # a dictionary of QWidgets that users interact with
         self.curves = []  # frequency response curves. THIS IS THE SINGLE SOURCE OF TRUTH FOR CURVE DATA.
+
+    def _create_menu_bar(self):
+        menu_bar = self.menuBar()
+        
+        file_menu = menu_bar.addMenu("File")
+        load_action = file_menu.addAction("Load state..", self.pick_a_file_and_load_state_from_it)
+        save_action = file_menu.addAction("Save state..", self.save_state_to_file)
+
+        edit_menu = menu_bar.addMenu("Edit")
+        settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
+
+        help_menu = menu_bar.addMenu("Help")
+        about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
         # ---- Create graph and buttons widget
@@ -251,19 +265,6 @@ class CurveAnalyze(qtw.QMainWindow):
         self.qlistwidget_for_curves.setSelectionMode(
             qtw.QAbstractItemView.ExtendedSelection)
         # self.qlistwidget_for_curves.setDragDropMode(qtw.QAbstractItemView.InternalMove)  # crashes the application
-
-        # ---- Create menu bar
-        menu_bar = self.menuBar()
-        
-        file_menu = menu_bar.addMenu("File")
-        load_action = file_menu.addAction("Load state..", self.pick_a_file_and_load_widget_state_from_it)
-        save_action = file_menu.addAction("Save state..", self.save_widget_state_to_file)
-
-        edit_menu = menu_bar.addMenu("Edit")
-        settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
-
-        help_menu = menu_bar.addMenu("Help")
-        about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _place_widgets(self):
         self.setCentralWidget(qtw.QWidget())
@@ -1100,7 +1101,7 @@ class CurveAnalyze(qtw.QMainWindow):
         "",
         "See 'requirements.txt' for an extensive list of Python libraries used.",
         ])
-        text_box = ResultTextBox("About", result_text, monospace=False)
+        text_box = pwi.ResultTextBox("About", result_text, monospace=False)
         text_box.exec()
 
     def get_widget_state(self):
@@ -1167,7 +1168,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.update_visibilities_of_graph_curves()
         self.graph.update_figure()
 
-    def save_widget_state_to_file(self):
+    def save_state_to_file(self):
         global settings
         
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save state to a file..',
@@ -1194,19 +1195,19 @@ class CurveAnalyze(qtw.QMainWindow):
             f.write(package)
         self.signal_good_beep.emit()
 
-    def pick_a_file_and_load_widget_state_from_it(self):
+    def pick_a_file_and_load_state_from_it(self):
         file = qtw.QFileDialog.getOpenFileName(self, caption='Get state from a save file..',
                                                dir=settings.last_used_folder,
                                                filter='Linecraft files (*.lc)',
                                                )[0]
         if file:
-            self.load_widget_state_from_file(file)
+            self.load_state_from_file(file)
         else:
             pass  # canceled file select
 
         self.signal_good_beep.emit()
 
-    def load_widget_state_from_file(self, file):
+    def load_state_from_file(self, file):
         try:
             os.path.isfile(file)
         except:
@@ -1215,39 +1216,6 @@ class CurveAnalyze(qtw.QMainWindow):
         settings.update_attr("last_used_folder", os.path.dirname(file))
         with open(file, "rb") as f:
             self.set_widget_state(f.read())
-
-
-class ResultTextBox(qtw.QDialog):
-    def __init__(self, title, result_text, monospace=True, parent=None):
-        super().__init__(parent=parent)
-        # self.setWindowModality(qtc.Qt.WindowModality.NonModal)
-
-        layout = qtw.QVBoxLayout(self)
-        self.setWindowTitle(title)
-        self.setMinimumSize(700, 480)
-        text_box = qtw.QTextEdit()
-        text_box.setReadOnly(True)
-        text_box.setText(result_text)
-
-        if monospace:
-            family = "Monospace" if "Monospace" in qtg.QFontDatabase.families() else "Consolas"
-            font = text_box.font()
-            font.setFamily(family)
-            text_box.setFont(font)
-
-        layout.addWidget(text_box)
-
-        # ---- Buttons
-        button_group = pwi.PushButtonGroup({"ok": "OK",
-                                            },
-                                           {},
-                                           )
-        button_group.buttons()["ok_pushbutton"].setDefault(True)
-        layout.addWidget(button_group)
-
-        # ---- Connections
-        button_group.buttons()["ok_pushbutton"].clicked.connect(
-            self.accept)
 
 
 class ProcessingDialog(qtw.QDialog):
@@ -1822,7 +1790,7 @@ def main():
     # ---- Are we loading a state file?
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
-        mw.load_widget_state_from_file(args.infile.name)
+        mw.load_state_from_file(args.infile.name)
 
     # --- Go
     mw.show()
