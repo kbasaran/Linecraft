@@ -23,7 +23,6 @@ from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 
-from dataclasses import dataclass, fields
 import sounddevice as sd
 import numpy as np
 from generictools import signal_tools
@@ -35,79 +34,6 @@ if __name__ == "__main__":
 else:
     logging.basicConfig(level=logging.WARNING)
     logger = logging.getLogger()
-
-
-@dataclass
-class Settings:
-    app_name: str = "Unnamed application"
-    author: str = "Kerem Basaran"
-    author_short: str = "kbasaran"
-    version: str = "Test build"
-    GAMMA: float = 1.401  # adiabatic index of air
-    P0: int = 101325
-    RHO: float = 1.1839  # 25 degrees celcius
-    Kair: float = 101325. * RHO
-    c_air: float = (P0 * GAMMA / RHO)**0.5
-    vc_table_file = os.path.join(os.getcwd(), 'SSC_data', 'WIRE_TABLE.csv')
-    f_min: int = 10
-    f_max: int = 3000
-    ppo: int = 48 * 8
-    FS: int = 48000
-    A_beep: int = 0.25
-    last_used_folder: str = os.path.expanduser('~')
-    show_legend: bool = True
-    max_legend_size: int = 10
-    import_ppo: int = 0
-    export_ppo: int = 96
-    processing_selected_tab: int = 0
-    mean_selected: bool = False
-    median_selected: bool = True
-    smoothing_type: int = 0
-    smoothing_resolution_ppo: int = 96
-    smoothing_bandwidth: int = 6
-    outlier_fence_iqr: float = 10.
-    outlier_action: int = 0
-    matplotlib_style: str = "bmh"
-    processing_interpolation_ppo: int = 96
-    interpolate_must_contain_hz: int = 1000
-    graph_grids: str = "default"
-    best_fit_calculation_resolution_ppo: int = 24
-    best_fit_critical_range_start_freq: int = 200
-    best_fit_critical_range_end_freq: int = 5000
-    best_fit_critical_range_weight: int = 1
-    import_table_no_line_headers: int = 1
-    import_table_no_columns: int = 1
-    import_table_layout_type: int = 0
-    import_table_delimiter: int = 0
-    import_table_decimal_separator: int = 0
-
-    def __post_init__(self):
-        self.settings_sys = qtc.QSettings(
-            self.author_short, self.app_name + " - " + self.version)
-        self.read_all_from_system()
-
-    def update_attr(self, attr_name, new_val):
-        assert type(getattr(self, attr_name)) == type(new_val)
-        setattr(self, attr_name, new_val)
-        self.settings_sys.setValue(attr_name, getattr(self, attr_name))
-
-    def write_all_to_system(self):
-        for field in fields(self):
-            self.settings_sys.setValue(field.name, getattr(self, field.name))
-
-    def read_all_from_system(self):
-        for field in fields(self):
-            setattr(self, field.name, self.settings_sys.value(
-                field.name, field.default, type=type(field.default)))
-
-    def as_dict(self):
-        settings = {}
-        for field in fields(self):
-            settings[field] = getattr(self, field.name)
-        return settings
-
-    def __repr__(self):
-        return str(self.as_dict())
 
 
 class FloatSpinBox(qtw.QDoubleSpinBox):

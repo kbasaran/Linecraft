@@ -21,7 +21,7 @@ __email__ = "kbasaran@gmail.com"
 from pathlib import Path
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.1.3",
+                   "version": "0.1.4",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
@@ -37,6 +37,7 @@ import sys
 import numpy as np
 import pandas as pd
 from difflib import SequenceMatcher
+from dataclasses import dataclass, fields
 
 # from matplotlib.backends.qt_compat import QtWidgets as qtw
 from PySide6 import QtWidgets as qtw
@@ -56,6 +57,78 @@ from io import StringIO
 import pickle
 import logging
 
+@dataclass
+class Settings:
+    app_name: str = app_definitions["app_name"]
+    author: str = app_definitions["author"]
+    author_short: str = app_definitions["author_short"]
+    version: str = app_definitions["version"]
+    GAMMA: float = 1.401  # adiabatic index of air
+    P0: int = 101325
+    RHO: float = 1.1839  # 25 degrees celcius
+    Kair: float = 101325. * RHO
+    c_air: float = (P0 * GAMMA / RHO)**0.5
+    vc_table_file = os.path.join(os.getcwd(), 'SSC_data', 'WIRE_TABLE.csv')
+    f_min: int = 10
+    f_max: int = 3000
+    ppo: int = 48 * 8
+    FS: int = 48000
+    A_beep: int = 0.25
+    last_used_folder: str = os.path.expanduser('~')
+    show_legend: bool = True
+    max_legend_size: int = 10
+    import_ppo: int = 0
+    export_ppo: int = 96
+    processing_selected_tab: int = 0
+    mean_selected: bool = False
+    median_selected: bool = True
+    smoothing_type: int = 0
+    smoothing_resolution_ppo: int = 96
+    smoothing_bandwidth: int = 6
+    outlier_fence_iqr: float = 10.
+    outlier_action: int = 0
+    matplotlib_style: str = "bmh"
+    processing_interpolation_ppo: int = 96
+    interpolate_must_contain_hz: int = 1000
+    graph_grids: str = "default"
+    best_fit_calculation_resolution_ppo: int = 24
+    best_fit_critical_range_start_freq: int = 200
+    best_fit_critical_range_end_freq: int = 5000
+    best_fit_critical_range_weight: int = 1
+    import_table_no_line_headers: int = 1
+    import_table_no_columns: int = 1
+    import_table_layout_type: int = 0
+    import_table_delimiter: int = 0
+    import_table_decimal_separator: int = 0
+
+    def __post_init__(self):
+        settings_storage_title = self.app_name + " - " + (self.version.split(".")[0] if "." in self.version else "")
+        self.settings_sys = qtc.QSettings(
+            self.author_short, settings_storage_title)
+        self.read_all_from_system()
+
+    def update_attr(self, attr_name, new_val):
+        assert type(getattr(self, attr_name)) == type(new_val)
+        setattr(self, attr_name, new_val)
+        self.settings_sys.setValue(attr_name, getattr(self, attr_name))
+
+    def write_all_to_system(self):
+        for field in fields(self):
+            self.settings_sys.setValue(field.name, getattr(self, field.name))
+
+    def read_all_from_system(self):
+        for field in fields(self):
+            setattr(self, field.name, self.settings_sys.value(
+                field.name, field.default, type=type(field.default)))
+
+    def as_dict(self):
+        settings = {}
+        for field in fields(self):
+            settings[field] = getattr(self, field.name)
+        return settings
+
+    def __repr__(self):
+        return str(self.as_dict())
 
 # Guide for special comments
 # https://docs.spyder-ide.org/current/panes/outline.html
@@ -123,6 +196,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.setWindowTitle(app_definitions["app_name"])
         self._create_core_objects()
         self._create_widgets()
         self._place_widgets()
@@ -510,7 +584,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 import_file = file
                 settings.update_attr("last_used_folder", os.path.dirname(import_file))
             else:
-                raise FileNotFoundError
+                return
 
         elif source == "clipboard":
             import_file = StringIO(pyperclip.paste())
@@ -1696,10 +1770,23 @@ def parse_args(app_definitions):
     return parser.parse_args()
 
 
-def main():
-    global settings, app_definition, logger
+def create_sound_engine(app):
+    sound_engine = pwi.SoundEngine(settings)
+    sound_engine_thread = qtc.QThread()
+    sound_engine.moveToThread(sound_engine_thread)
+    sound_engine_thread.start(qtc.QThread.HighPriority)
+    
+    # ---- Connect
+    app.aboutToQuit.connect(sound_engine.release_all)
+    app.aboutToQuit.connect(sound_engine_thread.exit)
+    
+    return sound_engine, sound_engine_thread
+    
 
-    settings = pwi.Settings(app_definitions["app_name"])
+def main():
+    global settings, app_definition, logger, create_sound_engine, Settings
+
+    settings = Settings(app_definitions["app_name"])
     args = parse_args(app_definitions)
 
     # ---- Setup logging
@@ -1707,13 +1794,13 @@ def main():
     home_folder = os.path.expanduser("~")
     log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
     logging.basicConfig(filename=log_filename, level=log_level, force=True)
+    # had to force this
+    # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
     logger = logging.getLogger()
     logger.info(f"Setting log level to: {log_level}")
 
-    # had to force this
-    # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
 
-    # ---- Start QApplication
+    # ---- Create QApplication
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to do the sys.argv with that?
@@ -1723,20 +1810,12 @@ def main():
     # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerUser(app)
     sys.excepthook = error_handler.excepthook
+    
+    # ---- Create sound engine
+    sound_engine, sound_engine_thread = create_sound_engine(app)
 
     # ---- Create main window
     mw = CurveAnalyze()
-    mw.setWindowTitle(app_definitions["app_name"])
-
-    # ---- Create sound engine
-    sound_engine = pwi.SoundEngine(settings)
-    sound_engine_thread = qtc.QThread()
-    sound_engine.moveToThread(sound_engine_thread)
-    sound_engine_thread.start(qtc.QThread.HighPriority)
-    
-    # ---- Connect signals
-    app.aboutToQuit.connect(sound_engine.release_all)
-    app.aboutToQuit.connect(sound_engine_thread.exit)
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
@@ -1745,6 +1824,7 @@ def main():
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw.load_widget_state_from_file(args.infile.name)
 
+    # --- Go
     mw.show()
     app.exec()
 
