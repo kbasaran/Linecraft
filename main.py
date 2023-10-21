@@ -179,7 +179,9 @@ class CurveAnalyze(qtw.QMainWindow):
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
     signal_user_settings_changed = qtc.Signal()
-    signal_table_import_was_successful = qtc.Signal()
+    signal_table_import_successful = qtc.Signal()
+    signal_table_import_fail = qtc.Signal()
+    signal_table_import_busy = qtc.Signal()
 
     # ---- Signals to the graph
     # signal_update_figure_request = qtc.Signal(object)  # failed to pass all the args and kwargs
@@ -332,6 +334,11 @@ class CurveAnalyze(qtw.QMainWindow):
         # Disable some buttons when there is a reference curve active
         self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["processing_pushbutton"].setEnabled(not x))
         self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["export_curve_pushbutton"].setEnabled(not x))
+
+        # Import table dialog good/bad beeps
+        self.signal_table_import_successful.connect(self.signal_good_beep)
+        self.signal_table_import_fail.connect(self.signal_bad_beep)
+
 
     def _export_curve(self):
         """Paste selected curve(s) to clipboard in a table."""
@@ -568,9 +575,14 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def _import_table_clicked(self):
         import_table_dialog = ImportDialog(parent=self)
-        import_table_dialog.signal_import_table_request.connect(
-            self._import_table_requested)
-        self.signal_table_import_was_successful.connect(import_table_dialog.reject)
+
+        import_table_dialog.signal_import_table_request.connect(self._import_table_requested)
+        self.signal_table_import_busy.connect(import_table_dialog.deactivate)
+
+        self.signal_table_import_successful.connect(import_table_dialog.reject)
+
+        self.signal_table_import_fail.connect(import_table_dialog.reactivate)
+
         import_table_dialog.exec()
 
     def _import_table_requested(self, source, import_settings):
@@ -605,6 +617,7 @@ class CurveAnalyze(qtw.QMainWindow):
             index_col = import_settings["no_index"] - 1
 
         # ---- read it
+        self.signal_table_import_busy.emit()
         try:
             df = pd.read_csv(import_file,
                              delimiter=import_settings["delimiter"],
@@ -617,11 +630,11 @@ class CurveAnalyze(qtw.QMainWindow):
                              skipinitialspace=True,  # since we only have numbers
                              )
         except IndexError:
+            self.signal_table_import_fail.emit()
             raise IndexError(
                 "Check your import settings and if all your rows and columns have the same length in the imported text.")
-            return
         except pd.errors.EmptyDataError:
-            self.signal_bad_beep.emit()
+            self.signal_table_import_fail.emit()
             return
 
         # ---- transpose if frequencies are in indexes
@@ -630,25 +643,25 @@ class CurveAnalyze(qtw.QMainWindow):
 
         # ---- validate curve and header validity
         try:
-            signal_tools.check_if_sorted_and_valid(df.columns)
+            signal_tools.check_if_sorted_and_valid(df.columns)  # checking headers
             df.columns = df.columns.astype(float)
         except ValueError as e:
             logger.info(str(e))
-            self.signal_bad_beep.emit()
+            self.signal_table_import_fail.emit()
             return
 
         # ---- Validate size
         if len(df.index) < 1:
             logger.info("Import does not have any curves to put on graph.")
-            self.signal_bad_beep.emit()
+            self.signal_table_import_fail.emit()
             return
     
         # ---- validate datatype
         try:
             df = df.astype(float)
         except ValueError:
+            self.signal_table_import_fail.emit()
             raise ValueError("Your dataset contains values that could not be interpreted as numbers.")
-            return
 
         logger.info(df.info)
 
@@ -669,8 +682,7 @@ class CurveAnalyze(qtw.QMainWindow):
             _ = self._add_single_curve(None, curve, update_figure=False)
 
         self.graph.update_figure()
-        self.signal_table_import_was_successful.emit()
-        self.signal_good_beep.emit()
+        self.signal_table_import_successful.emit()
 
     def _auto_importer_status_toggle(self, checked: bool):
         if checked == 1:
@@ -1205,7 +1217,6 @@ class CurveAnalyze(qtw.QMainWindow):
         else:
             pass  # canceled file select
 
-        self.signal_good_beep.emit()
 
     def load_state_from_file(self, file):
         try:
@@ -1216,6 +1227,7 @@ class CurveAnalyze(qtw.QMainWindow):
         settings.update_attr("last_used_folder", os.path.dirname(file))
         with open(file, "rb") as f:
             self.set_widget_state(f.read())
+        self.signal_good_beep.emit()
 
 
 class ProcessingDialog(qtw.QDialog):
@@ -1512,6 +1524,18 @@ class ImportDialog(qtw.QDialog):
                 settings.update_attr(widget_name, value["current_index"])
             else:
                 settings.update_attr(widget_name, value)
+
+    @qtc.Slot()
+    def deactivate(self):
+        self.setWindowTitle("Importing...")
+        self.setEnabled(False)
+        self.repaint()
+
+    @qtc.Slot()
+    def reactivate(self):
+        self.setWindowTitle("Import table with curve(s)")
+        self.setEnabled(True)
+        self.repaint()
 
     def _import_requested(self, source, user_form: pwi.UserForm):
         # Pass to easier names
