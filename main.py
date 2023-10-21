@@ -56,6 +56,7 @@ from tabulate import tabulate
 from io import StringIO
 import pickle
 import logging
+import time
 
 @dataclass
 class Settings:
@@ -586,6 +587,7 @@ class CurveAnalyze(qtw.QMainWindow):
         import_table_dialog.exec()
 
     def _import_table_requested(self, source, import_settings):
+        start_time = time.perf_counter()
         # ---- get the input
         if source == "file":
             file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
@@ -643,7 +645,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
         # ---- validate curve and header validity
         try:
-            signal_tools.check_if_sorted_and_valid(df.columns)  # checking headers
+            signal_tools.check_if_sorted_and_valid(tuple(df.columns))  # checking headers
             df.columns = df.columns.astype(float)
         except ValueError as e:
             logger.info(str(e))
@@ -681,6 +683,7 @@ class CurveAnalyze(qtw.QMainWindow):
             curve.set_name_base(name)
             _ = self._add_single_curve(None, curve, update_figure=False)
 
+        logger.info(f"Import of curves finished in {(time.perf_counter()-start_time)*1000:.4g}ms")
         self.graph.update_figure()
         self.signal_table_import_successful.emit()
 
@@ -865,7 +868,7 @@ class CurveAnalyze(qtw.QMainWindow):
             to_beep = True
 
         if "result_text" in results.keys():
-            result_text_box = ResultTextBox(results["title"], results["result_text"], parent=self)
+            result_text_box = pwi.ResultTextBox(results["title"], results["result_text"], parent=self)
             result_text_box.show()
             to_beep = True
 
@@ -1756,7 +1759,7 @@ def parse_args(app_definitions):
                                      )
     parser.add_argument('infile', nargs="?", type=argparse.FileType('r'), action="store",
                         help="Path to a '*.lc' file. This will open a saved state.")
-    parser.add_argument('-d', '--debuglevel', nargs="?", default="warning", action="store",
+    parser.add_argument('-d', '--debuglevel', nargs="?", action="store",
                         help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
@@ -1773,24 +1776,30 @@ def create_sound_engine(app):
     app.aboutToQuit.connect(sound_engine_thread.exit)
     
     return sound_engine, sound_engine_thread
-    
 
-def main():
-    global settings, app_definition, logger, create_sound_engine, Settings
 
-    settings = Settings(app_definitions["app_name"])
-    args = parse_args(app_definitions)
-
-    # ---- Setup logging
-    log_level = getattr(logging, args.debuglevel.upper(), logging.WARNING)
+def setup_logging(args):
+    if args.debuglevel:
+        log_level = getattr(logging, args.debuglevel.upper())
+    else:
+        log_level = logging.INFO
     home_folder = os.path.expanduser("~")
     log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
     logging.basicConfig(filename=log_filename, level=log_level, force=True)
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
     logger = logging.getLogger()
-    logger.info(f"Setting log level to: {log_level}")
+    logger.info(f"Starting with log level {log_level}.")
 
+    return logger
+
+
+def main():
+    global settings, app_definition, logger, create_sound_engine, Settings
+
+    settings = Settings(app_definitions["app_name"])
+    args = parse_args(app_definitions)
+    logger = setup_logging(args)
 
     # ---- Create QApplication
     if not (app := qtw.QApplication.instance()):
