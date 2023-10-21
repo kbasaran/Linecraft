@@ -1697,10 +1697,9 @@ class SettingsDialog(qtw.QDialog):
         if user_input_widgets["matplotlib_style"].currentIndex() != mpl_styles.index(settings.matplotlib_style):
             message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                           "Information",
-                                          "Application needs to be restarted to be able to use the new Matplotlib style.",
+                                          "New Matplotlib style will be available on next application start.",
                                           )
-            message_box.setStandardButtons(
-                qtw.QMessageBox.Cancel | qtw.QMessageBox.Ok)
+            message_box.setStandardButtons(qtw.QMessageBox.Ok)
             returned = message_box.exec()
 
             if returned == qtw.QMessageBox.Cancel:
