@@ -21,7 +21,7 @@ __email__ = "kbasaran@gmail.com"
 from pathlib import Path
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.1.4",
+                   "version": "0.2.0",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
@@ -322,7 +322,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.signal_update_labels_request.connect(self.graph.update_labels)
         self.signal_user_settings_changed.connect(self.graph.set_grid_type)
         self.signal_reset_colors_request.connect(self.graph.reset_colors)
-        self.signal_remove_curves_request.connect(self.graph.remove_line2d)
+        self.signal_remove_curves_request.connect(self.graph.remove_multiple_line2d)
         self.signal_toggle_reference_curve_request.connect(self.graph.toggle_reference_curve)
         # self.signal_add_line_request.connect(self.graph.add_line2d)
         self.signal_update_visibility_request.connect(self.graph.hide_show_line2d)
@@ -1823,7 +1823,7 @@ def main():
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw.load_state_from_file(args.infile.name)
-
+        
     # --- Go
     mw.show()
     app.exec()
