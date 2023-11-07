@@ -21,7 +21,7 @@ __email__ = "kbasaran@gmail.com"
 from pathlib import Path
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.2.0",
+                   "version": "0.2.1",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
