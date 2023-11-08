@@ -590,9 +590,9 @@ class CurveAnalyze(qtw.QMainWindow):
         start_time = time.perf_counter()
         # ---- get the input
         if source == "file":
-            file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
+            file = qtw.QFileDialog.getOpenFileName(self, caption='Open CSV formatted file..',
                                                    dir=settings.last_used_folder,
-                                                   filter='dBExtract XY_data (*.txt)',
+                                                   filter='CSV format (*.txt *.csv)',
                                                    )[0]
 
             if file and os.path.isfile(file):
