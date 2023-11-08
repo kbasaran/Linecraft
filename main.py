@@ -380,7 +380,7 @@ class CurveAnalyze(qtw.QMainWindow):
         if new_curve.is_curve():
             return new_curve
         else:
-            logger.debug("Unrecognized curve object")
+            print(f"Unrecognized curve object for data:\n{data}")
             return None
 
     def get_selected_curve_indexes(self) -> list:
@@ -547,7 +547,7 @@ class CurveAnalyze(qtw.QMainWindow):
             )
             curve.set_xy((x_intp, y_intp))
 
-        if curve.is_curve():
+        if "clipboard_curve" in locals() or curve.is_curve():
             i_insert = self._add_single_curve(None, curve)
             self.qlistwidget_for_curves.setCurrentRow(i_insert)
             self.signal_good_beep.emit()
@@ -1720,7 +1720,7 @@ class SettingsDialog(qtw.QDialog):
 
 class AutoImporter(qtc.QThread):
     signal_new_import = qtc.Signal(signal_tools.Curve)
-    
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
@@ -1769,11 +1769,11 @@ def create_sound_engine(app):
     sound_engine_thread = qtc.QThread()
     sound_engine.moveToThread(sound_engine_thread)
     sound_engine_thread.start(qtc.QThread.HighPriority)
-    
+
     # ---- Connect
     app.aboutToQuit.connect(sound_engine.release_all)
     app.aboutToQuit.connect(sound_engine_thread.exit)
-    
+
     return sound_engine, sound_engine_thread
 
 
@@ -1810,7 +1810,7 @@ def main():
     # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerUser(app)
     sys.excepthook = error_handler.excepthook
-    
+
     # ---- Create sound engine
     sound_engine, sound_engine_thread = create_sound_engine(app)
 
@@ -1823,10 +1823,11 @@ def main():
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
         mw.load_state_from_file(args.infile.name)
-        
+
     # --- Go
     mw.show()
     app.exec()
+
 
 if __name__ == "__main__":
     main()
