@@ -60,6 +60,7 @@ import time
 
 @dataclass
 class Settings:
+    global logger
     app_name: str = app_definitions["app_name"]
     author: str = app_definitions["author"]
     author_short: str = app_definitions["author_short"]
@@ -74,7 +75,7 @@ class Settings:
     f_max: int = 3000
     ppo: int = 48 * 8
     FS: int = 48000
-    A_beep: int = 0.25
+    A_beep: float = 0.25
     last_used_folder: str = os.path.expanduser('~')
     show_legend: bool = True
     max_legend_size: int = 10
@@ -106,21 +107,36 @@ class Settings:
         settings_storage_title = self.app_name + " - " + (self.version.split(".")[0] if "." in self.version else "")
         self.settings_sys = qtc.QSettings(
             self.author_short, settings_storage_title)
-        self.read_all_from_system()
+        self.read_all_from_registry()
 
     def update_attr(self, attr_name, new_val):
-        assert type(getattr(self, attr_name)) == type(new_val)
+        if not new_val:
+            return
+        elif type(getattr(self, attr_name)) != type(new_val):
+            logger.warning(f"Settings.update_attr: Received value type {type(new_val)} does not match the original type {type(getattr(self, attr_name))}"
+                            f"\nValue: {new_val}")
+
         setattr(self, attr_name, new_val)
         self.settings_sys.setValue(attr_name, getattr(self, attr_name))
 
-    def write_all_to_system(self):
+    def write_all_to_registry(self):
         for field in fields(self):
-            self.settings_sys.setValue(field.name, getattr(self, field.name))
+            value = getattr(self, field.name)
+            
+            # convert tuples to list for Qt compatibility
+            value = list(value) if isinstance(value, tuple) else value
 
-    def read_all_from_system(self):
+            self.settings_sys.setValue(field.name, value)
+
+    def read_all_from_registry(self):
         for field in fields(self):
-            setattr(self, field.name, self.settings_sys.value(
-                field.name, field.default, type=type(field.default)))
+            try:
+                value_raw = self.settings_sys.value(field.name, field.default)
+                value = field.type(value_raw)
+            except (TypeError, ValueError):
+                value = field.default
+    
+            setattr(self, field.name, value)
 
     def as_dict(self):
         settings = {}
@@ -1685,6 +1701,7 @@ class SettingsDialog(qtw.QDialog):
                 widget.setCurrentIndex(index_from_settings)
 
             else:
+                # print(widget_name, type(saved_setting), saved_setting)
                 widget.setValue(saved_setting)
 
         # Connections
@@ -1740,10 +1757,6 @@ class AutoImporter(qtc.QThread):
                 logger.warning(e)
 
 
-def test_and_demo(window):
-    pass
-
-
 def parse_args(app_definitions):
     import argparse
 
@@ -1796,7 +1809,7 @@ def setup_logging(args):
 
 
 def main():
-    global settings, app_definition, logger, create_sound_engine, Settings
+    global settings, app_definition, logger, create_sound_engine
 
     settings = Settings(app_definitions["app_name"])
     args = parse_args(app_definitions)
