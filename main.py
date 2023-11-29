@@ -21,7 +21,7 @@ __email__ = "kbasaran@gmail.com"
 from pathlib import Path
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.1.3",
+                   "version": "0.2.1",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2023 Kerem Basaran",
@@ -37,6 +37,7 @@ import sys
 import numpy as np
 import pandas as pd
 from difflib import SequenceMatcher
+from dataclasses import dataclass, fields
 
 # from matplotlib.backends.qt_compat import QtWidgets as qtw
 from PySide6 import QtWidgets as qtw
@@ -47,7 +48,7 @@ from generictools.graphing_widget import MatplotlibWidget
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
 from generictools import signal_tools
-import personalized_widgets as pwi
+import generictools.personalized_widgets as pwi
 import pyperclip  # must install xclip on Linux together with this!!
 from functools import partial
 import matplotlib as mpl
@@ -55,7 +56,80 @@ from tabulate import tabulate
 from io import StringIO
 import pickle
 import logging
+import time
 
+@dataclass
+class Settings:
+    app_name: str = app_definitions["app_name"]
+    author: str = app_definitions["author"]
+    author_short: str = app_definitions["author_short"]
+    version: str = app_definitions["version"]
+    GAMMA: float = 1.401  # adiabatic index of air
+    P0: int = 101325
+    RHO: float = 1.1839  # 25 degrees celcius
+    Kair: float = 101325. * RHO
+    c_air: float = (P0 * GAMMA / RHO)**0.5
+    vc_table_file = os.path.join(os.getcwd(), 'SSC_data', 'WIRE_TABLE.csv')
+    f_min: int = 10
+    f_max: int = 3000
+    ppo: int = 48 * 8
+    FS: int = 48000
+    A_beep: int = 0.25
+    last_used_folder: str = os.path.expanduser('~')
+    show_legend: bool = True
+    max_legend_size: int = 10
+    import_ppo: int = 0
+    export_ppo: int = 96
+    processing_selected_tab: int = 0
+    mean_selected: bool = False
+    median_selected: bool = True
+    smoothing_type: int = 0
+    smoothing_resolution_ppo: int = 96
+    smoothing_bandwidth: int = 6
+    outlier_fence_iqr: float = 10.
+    outlier_action: int = 0
+    matplotlib_style: str = "bmh"
+    processing_interpolation_ppo: int = 96
+    interpolate_must_contain_hz: int = 1000
+    graph_grids: str = "default"
+    best_fit_calculation_resolution_ppo: int = 24
+    best_fit_critical_range_start_freq: int = 200
+    best_fit_critical_range_end_freq: int = 5000
+    best_fit_critical_range_weight: int = 1
+    import_table_no_line_headers: int = 1
+    import_table_no_columns: int = 1
+    import_table_layout_type: int = 0
+    import_table_delimiter: int = 0
+    import_table_decimal_separator: int = 0
+
+    def __post_init__(self):
+        settings_storage_title = self.app_name + " - " + (self.version.split(".")[0] if "." in self.version else "")
+        self.settings_sys = qtc.QSettings(
+            self.author_short, settings_storage_title)
+        self.read_all_from_system()
+
+    def update_attr(self, attr_name, new_val):
+        assert type(getattr(self, attr_name)) == type(new_val)
+        setattr(self, attr_name, new_val)
+        self.settings_sys.setValue(attr_name, getattr(self, attr_name))
+
+    def write_all_to_system(self):
+        for field in fields(self):
+            self.settings_sys.setValue(field.name, getattr(self, field.name))
+
+    def read_all_from_system(self):
+        for field in fields(self):
+            setattr(self, field.name, self.settings_sys.value(
+                field.name, field.default, type=type(field.default)))
+
+    def as_dict(self):
+        settings = {}
+        for field in fields(self):
+            settings[field] = getattr(self, field.name)
+        return settings
+
+    def __repr__(self):
+        return str(self.as_dict())
 
 # Guide for special comments
 # https://docs.spyder-ide.org/current/panes/outline.html
@@ -106,7 +180,9 @@ class CurveAnalyze(qtw.QMainWindow):
     signal_good_beep = qtc.Signal()
     signal_bad_beep = qtc.Signal()
     signal_user_settings_changed = qtc.Signal()
-    signal_table_import_was_successful = qtc.Signal()
+    signal_table_import_successful = qtc.Signal()
+    signal_table_import_fail = qtc.Signal()
+    signal_table_import_busy = qtc.Signal()
 
     # ---- Signals to the graph
     # signal_update_figure_request = qtc.Signal(object)  # failed to pass all the args and kwargs
@@ -123,7 +199,9 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.setWindowTitle(app_definitions["app_name"])
         self._create_core_objects()
+        self._create_menu_bar()
         self._create_widgets()
         self._place_widgets()
         self._make_connections()
@@ -140,6 +218,19 @@ class CurveAnalyze(qtw.QMainWindow):
     def _create_core_objects(self):
         self._user_input_widgets = dict()  # a dictionary of QWidgets that users interact with
         self.curves = []  # frequency response curves. THIS IS THE SINGLE SOURCE OF TRUTH FOR CURVE DATA.
+
+    def _create_menu_bar(self):
+        menu_bar = self.menuBar()
+        
+        file_menu = menu_bar.addMenu("File")
+        load_action = file_menu.addAction("Load state..", self.pick_a_file_and_load_state_from_it)
+        save_action = file_menu.addAction("Save state..", self.save_state_to_file)
+
+        edit_menu = menu_bar.addMenu("Edit")
+        settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
+
+        help_menu = menu_bar.addMenu("Help")
+        about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
         # ---- Create graph and buttons widget
@@ -177,19 +268,6 @@ class CurveAnalyze(qtw.QMainWindow):
         self.qlistwidget_for_curves.setSelectionMode(
             qtw.QAbstractItemView.ExtendedSelection)
         # self.qlistwidget_for_curves.setDragDropMode(qtw.QAbstractItemView.InternalMove)  # crashes the application
-
-        # ---- Create menu bar
-        menu_bar = self.menuBar()
-        
-        file_menu = menu_bar.addMenu("File")
-        load_action = file_menu.addAction("Load state..", self.pick_a_file_and_load_widget_state_from_it)
-        save_action = file_menu.addAction("Save state..", self.save_widget_state_to_file)
-
-        edit_menu = menu_bar.addMenu("Edit")
-        settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
-
-        help_menu = menu_bar.addMenu("Help")
-        about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _place_widgets(self):
         self.setCentralWidget(qtw.QWidget())
@@ -244,7 +322,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.signal_update_labels_request.connect(self.graph.update_labels)
         self.signal_user_settings_changed.connect(self.graph.set_grid_type)
         self.signal_reset_colors_request.connect(self.graph.reset_colors)
-        self.signal_remove_curves_request.connect(self.graph.remove_line2d)
+        self.signal_remove_curves_request.connect(self.graph.remove_multiple_line2d)
         self.signal_toggle_reference_curve_request.connect(self.graph.toggle_reference_curve)
         # self.signal_add_line_request.connect(self.graph.add_line2d)
         self.signal_update_visibility_request.connect(self.graph.hide_show_line2d)
@@ -257,6 +335,11 @@ class CurveAnalyze(qtw.QMainWindow):
         # Disable some buttons when there is a reference curve active
         self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["processing_pushbutton"].setEnabled(not x))
         self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["export_curve_pushbutton"].setEnabled(not x))
+
+        # Import table dialog good/bad beeps
+        self.signal_table_import_successful.connect(self.signal_good_beep)
+        self.signal_table_import_fail.connect(self.signal_bad_beep)
+
 
     def _export_curve(self):
         """Paste selected curve(s) to clipboard in a table."""
@@ -297,7 +380,7 @@ class CurveAnalyze(qtw.QMainWindow):
         if new_curve.is_curve():
             return new_curve
         else:
-            logger.debug("Unrecognized curve object")
+            print(f"Unrecognized curve object for data:\n{data}")
             return None
 
     def get_selected_curve_indexes(self) -> list:
@@ -464,7 +547,7 @@ class CurveAnalyze(qtw.QMainWindow):
             )
             curve.set_xy((x_intp, y_intp))
 
-        if curve.is_curve():
+        if "clipboard_curve" in locals() or curve.is_curve():
             i_insert = self._add_single_curve(None, curve)
             self.qlistwidget_for_curves.setCurrentRow(i_insert)
             self.signal_good_beep.emit()
@@ -493,26 +576,32 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def _import_table_clicked(self):
         import_table_dialog = ImportDialog(parent=self)
-        import_table_dialog.signal_import_table_request.connect(
-            self._import_table_requested)
-        self.signal_table_import_was_successful.connect(import_table_dialog.reject)
+
+        import_table_dialog.signal_import_table_request.connect(self._import_table_requested)
+        self.signal_table_import_busy.connect(import_table_dialog.deactivate)
+
+        self.signal_table_import_successful.connect(import_table_dialog.reject)
+
+        self.signal_table_import_fail.connect(import_table_dialog.reactivate)
+
         import_table_dialog.exec()
 
     def _import_table_requested(self, source, import_settings):
+        start_time = time.perf_counter()
         # ---- get the input
         logger.debug(f"Import table requested from {source}.")
         logger.debug("Settings:" + str(settings))
         if source == "file":
-            file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
+            file = qtw.QFileDialog.getOpenFileName(self, caption='Open CSV formatted file..',
                                                    dir=settings.last_used_folder,
-                                                   filter='dBExtract XY_data (*.txt)',
+                                                   filter='CSV format (*.txt *.csv)',
                                                    )[0]
 
             if file and os.path.isfile(file):
                 import_file = file
                 settings.update_attr("last_used_folder", os.path.dirname(import_file))
             else:
-                raise FileNotFoundError
+                return
 
         elif source == "clipboard":
             import_file = StringIO(pyperclip.paste())
@@ -532,6 +621,7 @@ class CurveAnalyze(qtw.QMainWindow):
             index_col = import_settings["no_index"] - 1
 
         # ---- read it
+        self.signal_table_import_busy.emit()
         try:
             df = pd.read_csv(import_file,
                              delimiter=import_settings["delimiter"],
@@ -544,11 +634,11 @@ class CurveAnalyze(qtw.QMainWindow):
                              skipinitialspace=True,  # since we only have numbers
                              )
         except IndexError:
+            self.signal_table_import_fail.emit()
             raise IndexError(
                 "Check your import settings and if all your rows and columns have the same length in the imported text.")
-            return
         except pd.errors.EmptyDataError:
-            self.signal_bad_beep.emit()
+            self.signal_table_import_fail.emit()
             return
 
         # ---- transpose if frequencies are in indexes
@@ -557,25 +647,25 @@ class CurveAnalyze(qtw.QMainWindow):
 
         # ---- validate curve and header validity
         try:
-            signal_tools.check_if_sorted_and_valid(df.columns)
+            signal_tools.check_if_sorted_and_valid(tuple(df.columns))  # checking headers
             df.columns = df.columns.astype(float)
         except ValueError as e:
             logger.info(str(e))
-            self.signal_bad_beep.emit()
+            self.signal_table_import_fail.emit()
             return
 
         # ---- Validate size
         if len(df.index) < 1:
             logger.info("Import does not have any curves to put on graph.")
-            self.signal_bad_beep.emit()
+            self.signal_table_import_fail.emit()
             return
     
         # ---- validate datatype
         try:
             df = df.astype(float)
         except ValueError:
+            self.signal_table_import_fail.emit()
             raise ValueError("Your dataset contains values that could not be interpreted as numbers.")
-            return
 
         logger.info(df.info)
 
@@ -595,9 +685,9 @@ class CurveAnalyze(qtw.QMainWindow):
             curve.set_name_base(name)
             _ = self._add_single_curve(None, curve, update_figure=False)
 
+        logger.info(f"Import of curves finished in {(time.perf_counter()-start_time)*1000:.4g}ms")
         self.graph.update_figure()
-        self.signal_table_import_was_successful.emit()
-        self.signal_good_beep.emit()
+        self.signal_table_import_successful.emit()
 
     def _auto_importer_status_toggle(self, checked: bool):
         if checked == 1:
@@ -780,7 +870,7 @@ class CurveAnalyze(qtw.QMainWindow):
             to_beep = True
 
         if "result_text" in results.keys():
-            result_text_box = ResultTextBox(results["title"], results["result_text"], parent=self)
+            result_text_box = pwi.ResultTextBox(results["title"], results["result_text"], parent=self)
             result_text_box.show()
             to_beep = True
 
@@ -1028,7 +1118,7 @@ class CurveAnalyze(qtw.QMainWindow):
         "",
         "See 'requirements.txt' for an extensive list of Python libraries used.",
         ])
-        text_box = ResultTextBox("About", result_text, monospace=False)
+        text_box = pwi.ResultTextBox("About", result_text, monospace=False)
         text_box.exec()
 
     def get_widget_state(self):
@@ -1095,7 +1185,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.update_visibilities_of_graph_curves()
         self.graph.update_figure()
 
-    def save_widget_state_to_file(self):
+    def save_state_to_file(self):
         global settings
         
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save state to a file..',
@@ -1122,19 +1212,18 @@ class CurveAnalyze(qtw.QMainWindow):
             f.write(package)
         self.signal_good_beep.emit()
 
-    def pick_a_file_and_load_widget_state_from_it(self):
+    def pick_a_file_and_load_state_from_it(self):
         file = qtw.QFileDialog.getOpenFileName(self, caption='Get state from a save file..',
                                                dir=settings.last_used_folder,
                                                filter='Linecraft files (*.lc)',
                                                )[0]
         if file:
-            self.load_widget_state_from_file(file)
+            self.load_state_from_file(file)
         else:
             pass  # canceled file select
 
-        self.signal_good_beep.emit()
 
-    def load_widget_state_from_file(self, file):
+    def load_state_from_file(self, file):
         try:
             os.path.isfile(file)
         except:
@@ -1143,39 +1232,7 @@ class CurveAnalyze(qtw.QMainWindow):
         settings.update_attr("last_used_folder", os.path.dirname(file))
         with open(file, "rb") as f:
             self.set_widget_state(f.read())
-
-
-class ResultTextBox(qtw.QDialog):
-    def __init__(self, title, result_text, monospace=True, parent=None):
-        super().__init__(parent=parent)
-        # self.setWindowModality(qtc.Qt.WindowModality.NonModal)
-
-        layout = qtw.QVBoxLayout(self)
-        self.setWindowTitle(title)
-        self.setMinimumSize(700, 480)
-        text_box = qtw.QTextEdit()
-        text_box.setReadOnly(True)
-        text_box.setText(result_text)
-
-        if monospace:
-            family = "Monospace" if "Monospace" in qtg.QFontDatabase.families() else "Consolas"
-            font = text_box.font()
-            font.setFamily(family)
-            text_box.setFont(font)
-
-        layout.addWidget(text_box)
-
-        # ---- Buttons
-        button_group = pwi.PushButtonGroup({"ok": "OK",
-                                            },
-                                           {},
-                                           )
-        button_group.buttons()["ok_pushbutton"].setDefault(True)
-        layout.addWidget(button_group)
-
-        # ---- Connections
-        button_group.buttons()["ok_pushbutton"].clicked.connect(
-            self.accept)
+        self.signal_good_beep.emit()
 
 
 class ProcessingDialog(qtw.QDialog):
@@ -1473,6 +1530,18 @@ class ImportDialog(qtw.QDialog):
             else:
                 settings.update_attr(widget_name, value)
 
+    @qtc.Slot()
+    def deactivate(self):
+        self.setWindowTitle("Importing...")
+        self.setEnabled(False)
+        self.repaint()
+
+    @qtc.Slot()
+    def reactivate(self):
+        self.setWindowTitle("Import table with curve(s)")
+        self.setEnabled(True)
+        self.repaint()
+
     def _import_requested(self, source, user_form: pwi.UserForm):
         # Pass to easier names
         form_values = user_form.get_form_values()
@@ -1630,10 +1699,9 @@ class SettingsDialog(qtw.QDialog):
         if user_input_widgets["matplotlib_style"].currentIndex() != mpl_styles.index(settings.matplotlib_style):
             message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                           "Information",
-                                          "Application needs to be restarted to be able to use the new Matplotlib style.",
+                                          "New Matplotlib style will be available on next application start.",
                                           )
-            message_box.setStandardButtons(
-                qtw.QMessageBox.Cancel | qtw.QMessageBox.Ok)
+            message_box.setStandardButtons(qtw.QMessageBox.Ok)
             returned = message_box.exec()
 
             if returned == qtw.QMessageBox.Cancel:
@@ -1654,7 +1722,7 @@ class SettingsDialog(qtw.QDialog):
 
 class AutoImporter(qtc.QThread):
     signal_new_import = qtc.Signal(signal_tools.Curve)
-    
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
@@ -1692,30 +1760,49 @@ def parse_args(app_definitions):
                                      )
     parser.add_argument('infile', nargs="?", type=argparse.FileType('r'), action="store",
                         help="Path to a '*.lc' file. This will open a saved state.")
-    parser.add_argument('-d', '--debuglevel', nargs="?", default="warning", action="store",
+    parser.add_argument('-d', '--debuglevel', nargs="?", action="store",
                         help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
 
 
-def main():
-    global settings, app_definition, logger
+def create_sound_engine(app):
+    sound_engine = pwi.SoundEngine(settings)
+    sound_engine_thread = qtc.QThread()
+    sound_engine.moveToThread(sound_engine_thread)
+    sound_engine_thread.start(qtc.QThread.HighPriority)
 
-    settings = pwi.Settings(app_definitions["app_name"])
-    args = parse_args(app_definitions)
+    # ---- Connect
+    app.aboutToQuit.connect(sound_engine.release_all)
+    app.aboutToQuit.connect(sound_engine_thread.exit)
 
-    # ---- Setup logging
-    log_level = getattr(logging, args.debuglevel.upper(), logging.WARNING)
+    return sound_engine, sound_engine_thread
+
+
+def setup_logging(args):
+    if args.debuglevel:
+        log_level = getattr(logging, args.debuglevel.upper())
+    else:
+        log_level = logging.INFO
     home_folder = os.path.expanduser("~")
     log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
     logging.basicConfig(filename=log_filename, level=log_level, force=True)
-    logger = logging.getLogger()
-    logger.info(f"Setting log level to: {log_level}")
-
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
+    logger = logging.getLogger()
+    logger.info(f"Starting with log level {log_level}.")
 
-    # ---- Start QApplication
+    return logger
+
+
+def main():
+    global settings, app_definition, logger, create_sound_engine, Settings
+
+    settings = Settings(app_definitions["app_name"])
+    args = parse_args(app_definitions)
+    logger = setup_logging(args)
+
+    # ---- Create QApplication
     if not (app := qtw.QApplication.instance()):
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to do the sys.argv with that?
@@ -1726,29 +1813,23 @@ def main():
     error_handler = pwi.ErrorHandlerUser(app, logger)
     sys.excepthook = error_handler.excepthook
 
+    # ---- Create sound engine
+    sound_engine, sound_engine_thread = create_sound_engine(app)
+
     # ---- Create main window
     mw = CurveAnalyze()
-    mw.setWindowTitle(app_definitions["app_name"])
-
-    # ---- Create sound engine
-    sound_engine = pwi.SoundEngine(settings)
-    sound_engine_thread = qtc.QThread()
-    sound_engine.moveToThread(sound_engine_thread)
-    sound_engine_thread.start(qtc.QThread.HighPriority)
-    
-    # ---- Connect signals
-    app.aboutToQuit.connect(sound_engine.release_all)
-    app.aboutToQuit.connect(sound_engine_thread.exit)
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
 
     # ---- Are we loading a state file?
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
-        mw.load_widget_state_from_file(args.infile.name)
+        mw.load_state_from_file(args.infile.name)
 
+    # --- Go
     mw.show()
     app.exec()
+
 
 if __name__ == "__main__":
     main()
