@@ -662,7 +662,7 @@ class CurveAnalyze(qtw.QMainWindow):
                              )
         except IndexError as e:
             logger.warning("IndexError: " + str(e))
-            self.signal_table_import_fail.emit()
+            self.signal_table_import_fail.emit()  # always emit this first so the import dialog knows it didn't work
             raise IndexError(
                 "Check your import settings and if all your rows and columns have the same length in the imported text.")
         except pd.errors.EmptyDataError as e:
@@ -705,11 +705,10 @@ class CurveAnalyze(qtw.QMainWindow):
             raise ValueError("Your dataset contains values that could not be interpreted as numbers.")
 
         logger.info(df.info)
-        raise RuntimeError
 
         # ---- put on the graph
         for name, values in df.iterrows():
-            logger.debug(f"Atempting to add xy data as curve:\n{(df.columns, values)}\n")
+            logger.debug(f"Attempting to add xy data of index {name} as curve.")
             curve = signal_tools.Curve((df.columns, values))
             
             if settings.import_ppo > 0:
@@ -1614,7 +1613,10 @@ class ImportDialog(qtw.QDialog):
         for key in ["no_header", "no_index", "layout_type", "delimiter", "decimal_separator"]:
             user_settings[key] = locals().get(key)
 
-        self.signal_import_table_request.emit(source, user_settings)
+        try:
+            self.signal_import_table_request.emit(source, user_settings)
+        except:
+            self.signal_table_import_fail.emit()
 
 
 class SettingsDialog(qtw.QDialog):
