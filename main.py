@@ -356,7 +356,6 @@ class CurveAnalyze(qtw.QMainWindow):
         self.signal_table_import_successful.connect(self.signal_good_beep)
         self.signal_table_import_fail.connect(self.signal_bad_beep)
 
-
     def _export_curve(self):
         """Paste selected curve(s) to clipboard in a table."""
         if self.return_false_and_beep_if_no_curve_selected():
@@ -644,10 +643,8 @@ class CurveAnalyze(qtw.QMainWindow):
              f"\ndecimal: {import_settings['decimal_separator']}"
              f"\nskiprows: {skiprows}"
              f"\nheader: {header}"
-             f"\nindex_col: {index_col}"
-             f"\nraw data: \n{import_file.read()}\n")
+             f"\nindex_col: {index_col}")
             )
-        import_file.seek(0)
 
         try:
             df = pd.read_csv(import_file,
@@ -997,7 +994,10 @@ class CurveAnalyze(qtw.QMainWindow):
             # ---- Collect curves
             i_ref_curve, ref_curve = list(selected_curves.items())[0]
             ref_freqs, ref_curve_interpolated = signal_tools.interpolate_to_ppo(
-                *ref_curve.get_xy(), settings.best_fit_calculation_resolution_ppo)
+                *ref_curve.get_xy(),
+                settings.best_fit_calculation_resolution_ppo,
+                settings.interpolate_must_contain_hz,
+                )
 
             # ---- Calculate residuals squared
             residuals_squared = {curve.get_full_name():
@@ -1045,7 +1045,10 @@ class CurveAnalyze(qtw.QMainWindow):
 
         for i_curve, curve in selected_curves.items():
             xy = signal_tools.interpolate_to_ppo(
-                *curve.get_xy(), settings.processing_interpolation_ppo)
+                *curve.get_xy(),
+                settings.processing_interpolation_ppo,
+                settings.interpolate_must_contain_hz,
+                )
 
             new_curve = signal_tools.Curve(xy)
             new_curve.set_name_base(curve.get_name_base())
