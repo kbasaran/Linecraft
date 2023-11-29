@@ -415,7 +415,7 @@ class SoundEngine(qtc.QObject):
         self.stream.stop(ignore_errors=True)
 
 class ErrorHandlerDeveloper:
-    def __init__(self, app):
+    def __init__(self, app, logger):
         self.app = app
     
     def excepthook(self, etype, value, tb):
@@ -436,7 +436,7 @@ class ErrorHandlerDeveloper:
         message_box.exec()
 
 class ErrorHandlerUser:
-    def __init__(self, app):
+    def __init__(self, app, logger):
         self.app = app
     
     def excepthook(self, etype, value, tb):

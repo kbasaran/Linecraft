@@ -500,6 +500,8 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def _import_table_requested(self, source, import_settings):
         # ---- get the input
+        logger.debug(f"Import table requested from {source}.")
+        logger.debug("Settings:" + str(settings))
         if source == "file":
             file = qtw.QFileDialog.getOpenFileName(self, caption='Open dBExtract export file..',
                                                    dir=settings.last_used_folder,
@@ -1721,7 +1723,7 @@ def main():
         app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
 
     # ---- Catch exceptions and handle with pop-up widget
-    error_handler = pwi.ErrorHandlerUser(app)
+    error_handler = pwi.ErrorHandlerUser(app, logger)
     sys.excepthook = error_handler.excepthook
 
     # ---- Create main window
