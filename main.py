@@ -645,7 +645,7 @@ class CurveAnalyze(qtw.QMainWindow):
              f"\nskiprows: {skiprows}"
              f"\nheader: {header}"
              f"\nindex_col: {index_col}"
-             f"\ndata: \n{import_file.read()}\n")
+             f"\nraw data: \n{import_file.read()}\n")
             )
         import_file.seek(0)
 
@@ -673,7 +673,7 @@ class CurveAnalyze(qtw.QMainWindow):
         logger.debug(
             (f"Imported column names: {df.columns}"
              f"\nImported index names: {df.index}"
-            f"\nWhole:\n{df}"
+            f"\nWhole:\n{df}\n"
             )
             )
 
