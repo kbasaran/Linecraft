@@ -110,7 +110,7 @@ class Settings:
         self.read_all_from_registry()
 
     def update_attr(self, attr_name, new_val):
-        if not new_val:
+        if new_val is None:
             return
         elif type(getattr(self, attr_name)) != type(new_val):
             logger.warning(f"Settings.update_attr: Received value type {type(new_val)} does not match the original type {type(getattr(self, attr_name))}"
@@ -605,7 +605,7 @@ class CurveAnalyze(qtw.QMainWindow):
     def _import_table_requested(self, source, import_settings):
         start_time = time.perf_counter()
         # ---- get the input
-        logger.debug(f"Import table requested from {source}.")
+        logger.info(f"Import table requested from {source}.")
         logger.debug("Settings:" + str(settings))
         if source == "file":
             file = qtw.QFileDialog.getOpenFileName(self, caption='Open CSV formatted file..',
@@ -638,6 +638,17 @@ class CurveAnalyze(qtw.QMainWindow):
 
         # ---- read it
         self.signal_table_import_busy.emit()
+        logger.debug(
+            ("Attempting read_csv with settings:"
+             f"\ndelimiter: {import_settings['delimiter']}"
+             f"\ndecimal: {import_settings['decimal_separator']}"
+             f"\nskiprows: {skiprows}"
+             f"\nheader: {header}"
+             f"\nindex_col: {index_col}"
+             f"\ndata: \n{import_file.read()}\n")
+            )
+        import_file.seek(0)
+
         try:
             df = pd.read_csv(import_file,
                              delimiter=import_settings["delimiter"],
@@ -649,13 +660,22 @@ class CurveAnalyze(qtw.QMainWindow):
                              # encoding='unicode_escape',
                              skipinitialspace=True,  # since we only have numbers
                              )
-        except IndexError:
+        except IndexError as e:
+            logger.warning("IndexError: " + str(e))
             self.signal_table_import_fail.emit()
             raise IndexError(
                 "Check your import settings and if all your rows and columns have the same length in the imported text.")
-        except pd.errors.EmptyDataError:
+        except pd.errors.EmptyDataError as e:
+            logger.warning("EmptyDataError: " + str(e))
             self.signal_table_import_fail.emit()
             return
+
+        logger.debug(
+            (f"Imported column names: {df.columns}"
+             f"\nImported index names: {df.index}"
+            f"\nWhole:\n{df}"
+            )
+            )
 
         # ---- transpose if frequencies are in indexes
         if import_settings["layout_type"] == 1:
@@ -666,28 +686,31 @@ class CurveAnalyze(qtw.QMainWindow):
             signal_tools.check_if_sorted_and_valid(tuple(df.columns))  # checking headers
             df.columns = df.columns.astype(float)
         except ValueError as e:
-            logger.info(str(e))
+            logger.warning("Failed to validate curve: " + str(e) + "\n" + str(df))
             self.signal_table_import_fail.emit()
             return
 
         # ---- Validate size
         if len(df.index) < 1:
-            logger.info("Import does not have any curves to put on graph.")
+            logger.warning("Import does not have any curves to put on graph.")
             self.signal_table_import_fail.emit()
             return
     
         # ---- validate datatype
         try:
             df = df.astype(float)
-        except ValueError:
+        except ValueError as e:
+            logger.warning("Cannot convert table values to float: " + str(e))
             self.signal_table_import_fail.emit()
             raise ValueError("Your dataset contains values that could not be interpreted as numbers.")
 
         logger.info(df.info)
+        raise RuntimeError
 
         # ---- put on the graph
         for name, values in df.iterrows():
-            curve = signal_tools.Curve(np.column_stack((df.columns, values)))
+            logger.debug(f"Atempting to add xy data as curve:\n{(df.columns, values)}\n")
+            curve = signal_tools.Curve((df.columns, values))
             
             if settings.import_ppo > 0:
                 x, y = curve.get_xy()
@@ -1774,6 +1797,7 @@ def parse_args(app_definitions):
     parser.add_argument('infile', nargs="?", type=argparse.FileType('r'), action="store",
                         help="Path to a '*.lc' file. This will open a saved state.")
     parser.add_argument('-d', '--debuglevel', nargs="?", action="store",
+                        choices=["debug", "info", "warning", "error", "critical"],
                         help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
