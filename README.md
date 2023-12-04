@@ -5,7 +5,7 @@ Linecraft is a tool for visualization and statistical analysis of frequency resp
 
 ## Features
 - Import curves from CSV files or clipboard
-- Interpolation of curves into other array of frequencies 
+- Interpolation of curves into a new frequency array 
 - Calculation of mean and median from a group of curves
 - Calculation of interquartile range and detection of outliers in a group
 - Sorting of curves based on their correlation to a reference curve (i.e. best fit to reference)
