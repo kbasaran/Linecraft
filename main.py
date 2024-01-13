@@ -232,7 +232,7 @@ class CurveAnalyze(qtw.QMainWindow):
             self.qlistwidget_for_curves.setCurrentRow(-1)
 
     def _create_core_objects(self):
-        self._user_input_widgets = dict()  # a dictionary of QWidgets that users interact with
+        self._interactable_widgets = dict()  # a dictionary of QWidgets that users interact with
         self.curves = []  # frequency response curves. THIS IS THE SINGLE SOURCE OF TRUTH FOR CURVE DATA.
 
     def _create_menu_bar(self):
@@ -273,11 +273,11 @@ class CurveAnalyze(qtw.QMainWindow):
              },
         )
         # Add the widgets that users interact with into the dictionary
-        self.graph_buttons.user_values_storage(self._user_input_widgets)
+        self.graph_buttons.add_elements_to_dict(self._interactable_widgets)
 
         # ---- Set types and states for buttons
-        self._user_input_widgets["auto_import_pushbutton"].setCheckable(True)
-        self._user_input_widgets["set_reference_pushbutton"].setCheckable(True)
+        self._interactable_widgets["auto_import_pushbutton"].setCheckable(True)
+        self._interactable_widgets["set_reference_pushbutton"].setCheckable(True)
 
         # ---- Create list widget
         self.qlistwidget_for_curves = qtw.QListWidget()
@@ -299,33 +299,33 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def _make_connections(self):
         # ---- All the buttons
-        self._user_input_widgets["remove_pushbutton"].clicked.connect(
+        self._interactable_widgets["remove_pushbutton"].clicked.connect(
             self.remove_curves)
-        self._user_input_widgets["reset_indexes_pushbutton"].clicked.connect(
+        self._interactable_widgets["reset_indexes_pushbutton"].clicked.connect(
             self.reset_indexes)
-        self._user_input_widgets["reset_colors_pushbutton"].clicked.connect(
+        self._interactable_widgets["reset_colors_pushbutton"].clicked.connect(
             self.reset_colors_of_curves)
-        self._user_input_widgets["rename_pushbutton"].clicked.connect(
+        self._interactable_widgets["rename_pushbutton"].clicked.connect(
             self._rename_curve_clicked)
-        self._user_input_widgets["move_up_pushbutton"].clicked.connect(
+        self._interactable_widgets["move_up_pushbutton"].clicked.connect(
             self.move_up_1)
-        self._user_input_widgets["move_to_top_pushbutton"].clicked.connect(
+        self._interactable_widgets["move_to_top_pushbutton"].clicked.connect(
             self.move_to_top)
-        self._user_input_widgets["hide_pushbutton"].clicked.connect(
+        self._interactable_widgets["hide_pushbutton"].clicked.connect(
             self.hide_curves)
-        self._user_input_widgets["show_pushbutton"].clicked.connect(
+        self._interactable_widgets["show_pushbutton"].clicked.connect(
             self.show_curves)
-        self._user_input_widgets["export_curve_pushbutton"].clicked.connect(
+        self._interactable_widgets["export_curve_pushbutton"].clicked.connect(
             self._export_curve)
-        self._user_input_widgets["auto_import_pushbutton"].toggled.connect(
+        self._interactable_widgets["auto_import_pushbutton"].toggled.connect(
             self._auto_importer_status_toggle)
-        self._user_input_widgets["set_reference_pushbutton"].toggled.connect(
+        self._interactable_widgets["set_reference_pushbutton"].toggled.connect(
             self.reference_curve_status_toggle)
-        self._user_input_widgets["processing_pushbutton"].clicked.connect(
+        self._interactable_widgets["processing_pushbutton"].clicked.connect(
             self.open_processing_dialog)
-        self._user_input_widgets["import_curve_pushbutton"].clicked.connect(
+        self._interactable_widgets["import_curve_pushbutton"].clicked.connect(
             self.import_single_curve)
-        self._user_input_widgets["import_table_pushbutton"].clicked.connect(
+        self._interactable_widgets["import_table_pushbutton"].clicked.connect(
             self._import_table_clicked)
 
         # ---- Double click for highlighting/flashing a curve
@@ -346,11 +346,11 @@ class CurveAnalyze(qtw.QMainWindow):
         # ---- Signals from Matplotlib graph
         self.graph.signal_good_beep.connect(self.signal_good_beep)
         self.graph.signal_bad_beep.connect(self.signal_bad_beep)
-        self.graph.signal_is_reference_curve_active.connect(self._user_input_widgets["set_reference_pushbutton"].setChecked)
+        self.graph.signal_is_reference_curve_active.connect(self._interactable_widgets["set_reference_pushbutton"].setChecked)
 
         # Disable some buttons when there is a reference curve active
-        self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["processing_pushbutton"].setEnabled(not x))
-        self.graph.signal_is_reference_curve_active.connect(lambda x: self._user_input_widgets["export_curve_pushbutton"].setEnabled(not x))
+        self.graph.signal_is_reference_curve_active.connect(lambda x: self._interactable_widgets["processing_pushbutton"].setEnabled(not x))
+        self.graph.signal_is_reference_curve_active.connect(lambda x: self._interactable_widgets["export_curve_pushbutton"].setEnabled(not x))
 
         # Import table dialog good/bad beeps
         self.signal_table_import_successful.connect(self.signal_good_beep)
@@ -742,7 +742,7 @@ class CurveAnalyze(qtw.QMainWindow):
             # Block precessing options
             indexes_and_curves = self.get_selected_curves(as_dict=True)
             if len(indexes_and_curves) == 1:
-                self._user_input_widgets["processing_pushbutton"].setEnabled(
+                self._interactable_widgets["processing_pushbutton"].setEnabled(
                     False)
                 index, curve = list(indexes_and_curves.items())[0]
 
@@ -759,7 +759,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
             else:
                 # multiple selections
-                self._user_input_widgets["set_reference_pushbutton"].setChecked(False)
+                self._interactable_widgets["set_reference_pushbutton"].setChecked(False)
                 self.signal_bad_beep.emit()
 
         elif not checked:
@@ -1331,7 +1331,7 @@ class ProcessingDialog(qtw.QDialog):
                                          ),
                             "Type",
                             )
-        # user_form_1._user_input_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
+        # user_form_1._interactable_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
 
         user_form_1.add_row(pwi.IntSpinBox("smoothing_resolution_ppo",
                                            "Parts per octave resolution for the operation",
@@ -1350,10 +1350,10 @@ class ProcessingDialog(qtw.QDialog):
 
         def set_availability_of_resolution_option(smoothing_type_index):
             available = True if smoothing_type_index in (0, 1, 3) else False
-            user_form_1._user_input_widgets["smoothing_resolution_ppo"].setEnabled(
+            user_form_1._interactable_widgets["smoothing_resolution_ppo"].setEnabled(
                 available)
 
-        user_form_1._user_input_widgets["smoothing_type"].currentIndexChanged.connect(
+        user_form_1._interactable_widgets["smoothing_type"].currentIndexChanged.connect(
             set_availability_of_resolution_option)
 
         # ---- Outlier detection page
@@ -1441,7 +1441,7 @@ class ProcessingDialog(qtw.QDialog):
         self.tab_widget.setCurrentIndex(settings.processing_selected_tab)
         for i in range(self.tab_widget.count()):
             user_form = self.tab_widget.widget(i)
-            for key, widget in user_form._user_input_widgets.items():
+            for key, widget in user_form._interactable_widgets.items():
                 saved_setting = getattr(settings, key)
                 if isinstance(widget, qtw.QCheckBox):
                     widget.setChecked(saved_setting)
@@ -1463,7 +1463,7 @@ class ProcessingDialog(qtw.QDialog):
         settings.update_attr("processing_selected_tab",
                              self.tab_widget.currentIndex())
 
-        for key, widget in user_form._user_input_widgets.items():
+        for key, widget in user_form._interactable_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update_attr(key, widget.isChecked())
             elif isinstance(widget, qtw.QComboBox):
@@ -1549,7 +1549,7 @@ class ImportDialog(qtw.QDialog):
 
         # read values from settings
         values_new = {}
-        for key, widget in user_form._user_input_widgets.items():
+        for key, widget in user_form._interactable_widgets.items():
             if isinstance(widget, qtw.QComboBox):
                 values_new[key] = {"current_index": getattr(settings, key)}
             else:
@@ -1708,7 +1708,7 @@ class SettingsDialog(qtw.QDialog):
         layout.addWidget(button_group)
 
         # ---- read values from settings
-        for widget_name, widget in user_form._user_input_widgets.items():
+        for widget_name, widget in user_form._interactable_widgets.items():
             saved_setting = getattr(settings, widget_name)
             if isinstance(widget, qtw.QCheckBox):
                 widget.setChecked(saved_setting)
@@ -1736,7 +1736,7 @@ class SettingsDialog(qtw.QDialog):
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
             self.reject)
         button_group.buttons()["save_pushbutton"].clicked.connect(
-            partial(self._save_and_close,  user_form._user_input_widgets, settings))
+            partial(self._save_and_close,  user_form._interactable_widgets, settings))
 
     def _save_and_close(self, user_input_widgets, settings):
         mpl_styles = [
