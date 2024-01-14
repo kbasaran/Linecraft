@@ -1,5 +1,5 @@
 # Linecraft - Frequency response display and statistics tool
-# Copyright (C) 2023 - Kerem Basaran
+# Copyright (C) 2024 - Kerem Basaran
 # https://github.com/kbasaran
 __email__ = "kbasaran@gmail.com"
 
@@ -16,23 +16,8 @@ __email__ = "kbasaran@gmail.com"
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# from datetime import date
-# today = date.today()
-from pathlib import Path
-
-app_definitions = {"app_name": "Linecraft",
-                   "version": "0.2.3",
-                   # "version": "Test build " + today.strftime("%Y.%m.%d"),
-                   "description": "Linecraft - Frequency response plotting and statistics",
-                   "copyright": "Copyright (C) 2023 Kerem Basaran",
-                   "icon_path": str(Path("./logo/icon.ico")),
-                   "author": "Kerem Basaran",
-                   "author_short": "kbasaran",
-                   "email": "kbasaran@gmail.com",
-                   "website": "https://github.com/kbasaran",
-                   }
-
 import sys
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from difflib import SequenceMatcher
@@ -56,6 +41,19 @@ from io import StringIO
 import pickle
 import logging
 import time
+
+app_definitions = {"app_name": "Linecraft",
+                   "version": "0.2.3",
+                   # "version": "Test build " + today.strftime("%Y.%m.%d"),
+                   "description": "Linecraft - Frequency response plotting and statistics",
+                   "copyright": "Copyright (C) 2023 Kerem Basaran",
+                   "icon_path": str(Path("./logo/icon.ico")),
+                   "author": "Kerem Basaran",
+                   "author_short": "kbasaran",
+                   "email": "kbasaran@gmail.com",
+                   "website": "https://github.com/kbasaran",
+                   }
+
 
 @dataclass
 class Settings:
