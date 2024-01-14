@@ -32,7 +32,6 @@ app_definitions = {"app_name": "Linecraft",
                    "website": "https://github.com/kbasaran",
                    }
 
-import os
 import sys
 import numpy as np
 import pandas as pd
@@ -70,13 +69,12 @@ class Settings:
     RHO: float = 1.1839  # 25 degrees celcius
     Kair: float = 101325. * RHO
     c_air: float = (P0 * GAMMA / RHO)**0.5
-    vc_table_file = os.path.join(os.getcwd(), 'SSC_data', 'WIRE_TABLE.csv')
     f_min: int = 10
     f_max: int = 3000
     ppo: int = 48 * 8
     FS: int = 48000
     A_beep: float = 0.25
-    last_used_folder: str = os.path.expanduser('~')
+    last_used_folder: str = str(Path.home())
     show_legend: bool = True
     max_legend_size: int = 10
     import_ppo: int = 0
@@ -607,14 +605,13 @@ class CurveAnalyze(qtw.QMainWindow):
         logger.info(f"Import table requested from {source}.")
         logger.debug("Settings:" + str(settings))
         if source == "file":
-            file = qtw.QFileDialog.getOpenFileName(self, caption='Open CSV formatted file..',
+            file_raw = qtw.QFileDialog.getOpenFileName(self, caption='Open CSV formatted file..',
                                                    dir=settings.last_used_folder,
                                                    filter='CSV format (*.txt *.csv)',
                                                    )[0]
 
-            if file and os.path.isfile(file):
-                import_file = file
-                settings.update_attr("last_used_folder", os.path.dirname(import_file))
+            if file_raw and (file := Path(file_raw)).is_file():
+                settings.update_attr("last_used_folder", file.parent)
             else:
                 return
 
@@ -1236,18 +1233,18 @@ class CurveAnalyze(qtw.QMainWindow):
         # path_unverified.setDefaultSuffix("lc") not available for getSaveFileName
         
         try:
-            file = path_unverified[0]
-            if file:  # if we received a string
+            file_raw = path_unverified[0]
+            if file_raw:  # if we received a string
                 # Filter not working as expected in nautilus. Saves files without including the extension.
                 # Therefore added this seciton.
-                file = (file + ".lc" if file[-3:] != ".lc" else file)
-                assert os.path.isdir(os.path.dirname(file))
+                file = Path(file_raw + ".lc" if file_raw[-3:] != ".lc" else file_raw)
+                assert file.parent.is_dir()
             else:
                 return  # nothing was selected, pick file canceled
         except:
-            raise NotADirectoryError(file)
+            raise NotADirectoryError(file_raw)
 
-        settings.update_attr("last_used_folder", os.path.dirname(file))
+        settings.update_attr("last_used_folder", str(file.parent))
         package = self.get_widget_state()
         with open(file, "wb") as f:
             f.write(package)
@@ -1259,18 +1256,18 @@ class CurveAnalyze(qtw.QMainWindow):
                                                filter='Linecraft files (*.lc)',
                                                )[0]
         if file:
-            self.load_state_from_file(file)
+            self.load_state_from_file(Path(file))
         else:
             pass  # canceled file select
 
+    def load_state_from_file(self, file: Path):
 
-    def load_state_from_file(self, file):
-        try:
-            os.path.isfile(file)
-        except:
+        if not isinstance(file, Path):
+            raise TypeError("Input type must be 'pathlib.Path'")
+        if not file.is_file():
             raise FileNotFoundError(file)
 
-        settings.update_attr("last_used_folder", os.path.dirname(file))
+        settings.update_attr("last_used_folder", str(file.parent))
         with open(file, "rb") as f:
             self.set_widget_state(f.read())
         self.signal_good_beep.emit()
@@ -1799,9 +1796,9 @@ def parse_args(app_definitions):
                                      description=description,
                                      epilog={app_definitions['website']},
                                      )
-    parser.add_argument('infile', nargs="?", type=argparse.FileType('r'), action="store",
+    parser.add_argument('infile', nargs="?", type=Path,
                         help="Path to a '*.lc' file. This will open a saved state.")
-    parser.add_argument('-d', '--debuglevel', nargs="?", action="store",
+    parser.add_argument('-d', '--debuglevel', nargs="?",
                         choices=["debug", "info", "warning", "error", "critical"],
                         help="Set debugging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
@@ -1826,8 +1823,7 @@ def setup_logging(args):
         log_level = getattr(logging, args.debuglevel.upper())
     else:
         log_level = logging.INFO
-    home_folder = os.path.expanduser("~")
-    log_filename = os.path.join(home_folder, f".{app_definitions['app_name'].lower()}.log")
+    log_filename = Path.home().joinpath(f".{app_definitions['app_name'].lower()}.log")
     logging.basicConfig(filename=log_filename, level=log_level, force=True)
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
@@ -1840,9 +1836,9 @@ def setup_logging(args):
 def main():
     global settings, app_definition, logger, create_sound_engine
 
-    settings = Settings(app_definitions["app_name"])
     args = parse_args(app_definitions)
     logger = setup_logging(args)
+    settings = Settings(app_definitions["app_name"])
 
     # ---- Create QApplication
     if not (app := qtw.QApplication.instance()):
