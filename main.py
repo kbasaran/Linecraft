@@ -1129,30 +1129,30 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def open_about_menu(self):
         result_text = "\n".join([
-        "Linecraft - Frequency response display and statistics tool",
-        f"Version: {app_definitions['version']}",
-        "",
-        f"Copyright (C) 2023 - {app_definitions['author']}",
-        f"{app_definitions['website']}",
-        f"{app_definitions['email']}",
-        "",
-        "This program is free software: you can redistribute it and/or modify",
-        "it under the terms of the GNU General Public License as published by",
-        "the Free Software Foundation, either version 3 of the License, or",
-        "(at your option) any later version.",
-        "",
-        "This program is distributed in the hope that it will be useful,",
-        "but WITHOUT ANY WARRANTY; without even the implied warranty of",
-        "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the",
-        "GNU General Public License for more details.",
-        "",
-        "You should have received a copy of the GNU General Public License",
-        "along with this program.  If not, see <https://www.gnu.org/licenses/>.",
-        "",
-        "This software uses Qt for Python under the GPLv3 license.",
-        "https://www.qt.io/",
-        "",
-        "See 'requirements.txt' for an extensive list of Python libraries used.",
+            "Linecraft - Frequency response display and statistics tool",
+            f"Version: {app_definitions['version']}",
+            "",
+            f"Copyright (C) 2024 - {app_definitions['author']}",
+            f"{app_definitions['website']}",
+            f"{app_definitions['email']}",
+            "",
+            "This program is free software: you can redistribute it and/or modify",
+            "it under the terms of the GNU General Public License as published by",
+            "the Free Software Foundation, either version 3 of the License, or",
+            "(at your option) any later version.",
+            "",
+            "This program is distributed in the hope that it will be useful,",
+            "but WITHOUT ANY WARRANTY; without even the implied warranty of",
+            "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the",
+            "GNU General Public License for more details.",
+            "",
+            "You should have received a copy of the GNU General Public License",
+            "along with this program.  If not, see <https://www.gnu.org/licenses/>.",
+            "",
+            "This software uses Qt for Python under the GPLv3 license.",
+            "https://www.qt.io/",
+            "",
+            "See 'requirements.txt' for an extensive list of Python libraries used.",
         ])
         text_box = pwi.ResultTextBox("About", result_text, monospace=False)
         text_box.exec()
@@ -1177,7 +1177,7 @@ class CurveAnalyze(qtw.QMainWindow):
                          "markeredgecolor": line.get_markeredgecolor(),
                          }
             return line_info
-    
+
         def collect_curve_info(curve):
             curve_info = {"visible": curve.is_visible(),
                           "identification": curve._identification,
