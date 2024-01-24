@@ -75,7 +75,7 @@ class Settings:
     last_used_folder: str = str(Path.home())
     show_legend: bool = True
     max_legend_size: int = 10
-    import_ppo: int = 0
+    import_ppo: int = 96
     export_ppo: int = 96
     processing_selected_tab: int = 0
     mean_selected: bool = False
