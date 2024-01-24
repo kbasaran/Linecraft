@@ -1164,6 +1164,8 @@ class CurveAnalyze(qtw.QMainWindow):
         graph_info = {"title": ax.get_title(),
                       "xlabel": ax.get_xlabel(),
                       "ylabel": ax.get_ylabel(),
+                      "xlim": ax.get_xlim(),
+                      "ylim": ax.get_ylim(),
                       "xscale": ax.get_xscale(),
                       "yscale": ax.get_yscale(),
                       }
@@ -1202,8 +1204,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
         # ---- delete all lines first
         # self.remove_curves([*range(len(self.curves))])
-        
-        
+
         if not self.curves:
             # ---- apply graph state
             ax = self.graph.ax
@@ -1212,31 +1213,30 @@ class CurveAnalyze(qtw.QMainWindow):
             ax.set_ylabel(graph_info["ylabel"])
             ax.set_xscale(graph_info["xscale"])
             ax.set_yscale(graph_info["yscale"])
-            recalculate_limits = False
-        else:
-            recalculate_limits = True
-        
+            if "xlim" in graph_info.keys():  # added as bug fix in 0.2.4
+                ax.set_xlim(graph_info["xlim"])
+                ax.set_ylim(graph_info["ylim"])
 
         # ---- add lines
         for line_info, curve_info in zip(lines_info, curves_info):
             curve = signal_tools.Curve((curve_info["x"], curve_info["y"]))
             curve.set_visible(curve_info["visible"])
             curve._identification = curve_info["identification"]
-            
+
             self._add_single_curve(None, curve, update_figure=False, line2d_kwargs=line_info)
-        
+
         self.update_visibilities_of_graph_curves(update_figure=False)
-        self.graph.update_figure(recalculate_limits=recalculate_limits)
+        self.graph.update_figure(recalculate_limits=False)
 
     def save_state_to_file(self):
         global settings
-        
+
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save state to a file..',
                                                           dir=settings.last_used_folder,
                                                           filter='Linecraft files (*.lc)',
                                                           )
         # path_unverified.setDefaultSuffix("lc") not available for getSaveFileName
-        
+
         try:
             file_raw = path_unverified[0]
             if file_raw:  # if we received a string
