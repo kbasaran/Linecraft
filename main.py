@@ -202,7 +202,7 @@ class CurveAnalyze(qtw.QMainWindow):
     signal_update_labels_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     signal_reset_colors_request = qtc.Signal()
     signal_remove_curves_request = qtc.Signal(list)
-    signal_update_visibility_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
+    # signal_update_visibility_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     signal_reposition_curves_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     signal_flash_curve_request = qtc.Signal(int)
     signal_toggle_reference_curve_request = qtc.Signal(object)  # it is a list or a NoneType
@@ -331,13 +331,13 @@ class CurveAnalyze(qtw.QMainWindow):
         # self.signal_update_figure_request.connect(self.graph.update_figure)
         self.signal_reposition_curves_request.connect(self.graph.change_lines_order)
         self.signal_flash_curve_request.connect(self.graph.flash_curve)
-        self.signal_update_labels_request.connect(self.graph.update_labels)
+        self.signal_update_labels_request.connect(self.graph.update_labels_and_visibilities)
         self.signal_user_settings_changed.connect(self.graph.set_grid_type)
         self.signal_reset_colors_request.connect(self.graph.reset_colors)
         self.signal_remove_curves_request.connect(self.graph.remove_multiple_line2d)
         self.signal_toggle_reference_curve_request.connect(self.graph.toggle_reference_curve)
         # self.signal_add_line_request.connect(self.graph.add_line2d)
-        self.signal_update_visibility_request.connect(self.graph.hide_show_line2d)
+        # self.signal_update_visibility_request.connect(self.graph.update_labels_and_visibilities)
 
         # ---- Signals from Matplotlib graph
         self.graph.signal_good_beep.connect(self.signal_good_beep)
@@ -480,13 +480,14 @@ class CurveAnalyze(qtw.QMainWindow):
         if not len(self.curves):
             self.signal_bad_beep.emit()
         else:
+            new_labels = {}
             for i, curve in enumerate(self.curves):
+                # print(i, curve.get_full_name())
                 curve.set_name_prefix(f"#{i:02d}")
-                self.qlistwidget_for_curves.item(
-                    i).setText(curve.get_full_name())
-            new_labels = {i: curve.get_full_name() for i, curve in enumerate(self.curves)}
+                self.qlistwidget_for_curves.item(i).setText(curve.get_full_name())
+                new_labels[i] = (curve.get_full_name(), curve.is_visible())
                         
-            self.signal_update_labels_request.emit(new_labels)
+            self.graph.signal_update_labels_request.emit(new_labels)
 
     def reset_colors_of_curves(self):
         """Reset the colors for the graph curves with ordered standard colors"""
@@ -517,7 +518,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 curve.add_name_suffix(text)
                 list_item = self.qlistwidget_for_curves.item(index)
                 list_item.setText(curve.get_full_name())
-                new_labels[index] = curve.get_full_name()
+                new_labels[index] = (curve.get_full_name(), curve.is_visible())
 
         # ---- Single curve. Edit base name and suffixes into a new base name
         else:
@@ -536,9 +537,9 @@ class CurveAnalyze(qtw.QMainWindow):
             curve.set_name_base(text)
             list_item = self.qlistwidget_for_curves.item(index)
             list_item.setText(curve.get_full_name())
-            new_labels[index] = curve.get_full_name()
+            new_labels[index] = (curve.get_full_name(), curve.is_visible())
 
-        self.signal_update_labels_request.emit(new_labels)
+        self.graph.update_labels_and_visibilities(new_labels)
 
     def import_single_curve(self, curve: signal_tools.Curve = None):
         if not curve:
@@ -780,8 +781,9 @@ class CurveAnalyze(qtw.QMainWindow):
                 # Update graph
                 self.signal_toggle_reference_curve_request.emit(None)
 
-
-    def _add_single_curve(self, i_insert: int, curve: signal_tools.Curve, update_figure: bool = True, line2d_kwargs={}):
+    def _add_single_curve(self, i_insert: int, curve: signal_tools.Curve, update_figure: bool = True,
+                          line2d_kwargs={},
+                          ):
         if curve.is_curve():
             i_max = len(self.curves)
             if i_insert is None or i_insert >= i_max:
@@ -796,11 +798,11 @@ class CurveAnalyze(qtw.QMainWindow):
                     font.setWeight(qtg.QFont.Thin)
                     list_item.setFont(font)
                 self.qlistwidget_for_curves.addItem(list_item)
-                
+
                 self.graph.add_line2d(i_max, curve.get_full_name(), curve.get_xy(),
                                       update_figure=update_figure, line2d_kwargs=line2d_kwargs,
                                       )
-                
+
                 return i_max
 
             else:
@@ -861,14 +863,14 @@ class CurveAnalyze(qtw.QMainWindow):
         index = self.qlistwidget_for_curves.row(item)
         self.signal_flash_curve_request.emit(index)
 
-    def update_visibilities_of_graph_curves(self, indexes_and_curves=None):
+    def update_visibilities_of_graph_curves(self, indexes_and_curves=None, update_figure=True):
         if not indexes_and_curves:
-            visibility_states = {i: curve.is_visible()
+            visibility_states = {i: (None, curve.is_visible())
                                  for i, curve in enumerate(self.curves)}
         else:
-            visibility_states = {i: curve.is_visible()
+            visibility_states = {i: (None, curve.is_visible())
                                  for i, curve in indexes_and_curves.items()}
-        self.graph.hide_show_line2d(visibility_states)
+        self.graph.update_labels_and_visibilities(visibility_states, update_figure=update_figure)
 
     def open_processing_dialog(self):
         if self.return_false_and_beep_if_no_curve_selected():
@@ -1201,6 +1203,7 @@ class CurveAnalyze(qtw.QMainWindow):
         # ---- delete all lines first
         # self.remove_curves([*range(len(self.curves))])
         
+        
         if not self.curves:
             # ---- apply graph state
             ax = self.graph.ax
@@ -1209,6 +1212,10 @@ class CurveAnalyze(qtw.QMainWindow):
             ax.set_ylabel(graph_info["ylabel"])
             ax.set_xscale(graph_info["xscale"])
             ax.set_yscale(graph_info["yscale"])
+            recalculate_limits = False
+        else:
+            recalculate_limits = True
+        
 
         # ---- add lines
         for line_info, curve_info in zip(lines_info, curves_info):
@@ -1218,8 +1225,8 @@ class CurveAnalyze(qtw.QMainWindow):
             
             self._add_single_curve(None, curve, update_figure=False, line2d_kwargs=line_info)
         
-        self.update_visibilities_of_graph_curves()
-        self.graph.update_figure()
+        self.update_visibilities_of_graph_curves(update_figure=False)
+        self.graph.update_figure(recalculate_limits=recalculate_limits)
 
     def save_state_to_file(self):
         global settings
