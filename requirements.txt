@@ -1,5 +1,5 @@
 acoustics >= 0.2.6
-matplotlib == 3.7.*
+matplotlib == 3.8.2
 numpy == 1.23.*
 pandas == 1.5.*
 pyperclip == 1.8.2
