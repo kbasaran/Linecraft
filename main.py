@@ -487,7 +487,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 self.qlistwidget_for_curves.item(i).setText(curve.get_full_name())
                 new_labels[i] = (curve.get_full_name(), curve.is_visible())
                         
-            self.graph.signal_update_labels_request.emit(new_labels)
+            self.signal_update_labels_request.emit(new_labels)
 
     def reset_colors_of_curves(self):
         """Reset the colors for the graph curves with ordered standard colors"""
