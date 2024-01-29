@@ -105,11 +105,11 @@ class Settings:
             self.author_short, settings_storage_title)
         self.read_all_from_registry()
 
-    def update_attr(self, attr_name, new_val):
+    def update(self, attr_name, new_val):
         if new_val is None:
             return
         elif type(getattr(self, attr_name)) != type(new_val):
-            logger.warning(f"Settings.update_attr: Received value type {type(new_val)} does not match the original type {type(getattr(self, attr_name))}"
+            logger.warning(f"Settings.update: Received value type {type(new_val)} does not match the original type {type(getattr(self, attr_name))}"
                             f"\nValue: {new_val}")
 
         setattr(self, attr_name, new_val)
@@ -610,7 +610,7 @@ class CurveAnalyze(qtw.QMainWindow):
                                                    )[0]
 
             if file_raw and (file := Path(file_raw)).is_file():
-                settings.update_attr("last_used_folder", file.parent)
+                settings.update("last_used_folder", file.parent)
             else:
                 return
 
@@ -1249,7 +1249,7 @@ class CurveAnalyze(qtw.QMainWindow):
         except:
             raise NotADirectoryError(file_raw)
 
-        settings.update_attr("last_used_folder", str(file.parent))
+        settings.update("last_used_folder", str(file.parent))
         package = self.get_widget_state()
         with open(file, "wb") as f:
             f.write(package)
@@ -1272,7 +1272,7 @@ class CurveAnalyze(qtw.QMainWindow):
         if not file.is_file():
             raise FileNotFoundError(file)
 
-        settings.update_attr("last_used_folder", str(file.parent))
+        settings.update("last_used_folder", str(file.parent))
         with open(file, "rb") as f:
             self.set_widget_state(f.read())
         self.signal_good_beep.emit()
@@ -1462,16 +1462,16 @@ class ProcessingDialog(qtw.QDialog):
         active_tab_index = self.tab_widget.currentIndex()
         user_form, processing_function_name = self.user_forms_and_recipient_functions[
             active_tab_index]
-        settings.update_attr("processing_selected_tab",
+        settings.update("processing_selected_tab",
                              self.tab_widget.currentIndex())
 
         for key, widget in user_form._interactable_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
-                settings.update_attr(key, widget.isChecked())
+                settings.update(key, widget.isChecked())
             elif isinstance(widget, qtw.QComboBox):
-                settings.update_attr(key, widget.currentIndex())
+                settings.update(key, widget.currentIndex())
             else:
-                settings.update_attr(key, widget.value())
+                settings.update(key, widget.value())
 
         self.setWindowTitle("Calculating...")
         self.setEnabled(False)  # calculating
@@ -1569,9 +1569,9 @@ class ImportDialog(qtw.QDialog):
         values = user_form.get_form_values()
         for widget_name, value in values.items():
             if isinstance(value, dict) and "current_index" in value.keys():
-                settings.update_attr(widget_name, value["current_index"])
+                settings.update(widget_name, value["current_index"])
             else:
-                settings.update_attr(widget_name, value)
+                settings.update(widget_name, value)
 
     @qtc.Slot()
     def deactivate(self):
@@ -1756,13 +1756,13 @@ class SettingsDialog(qtw.QDialog):
 
         for widget_name, widget in user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
-                settings.update_attr(widget_name, widget.isChecked())
+                settings.update(widget_name, widget.isChecked())
             elif widget_name == "matplotlib_style":
-                settings.update_attr(widget_name, widget.currentData())
+                settings.update(widget_name, widget.currentData())
             elif widget_name == "graph_grids":
-                settings.update_attr(widget_name, widget.currentData())
+                settings.update(widget_name, widget.currentData())
             else:
-                settings.update_attr(widget_name, widget.value())
+                settings.update(widget_name, widget.value())
         self.signal_settings_changed.emit()
         self.accept()
 
