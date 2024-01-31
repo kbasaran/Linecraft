@@ -1333,7 +1333,7 @@ class ProcessingDialog(qtw.QDialog):
                                          ),
                             "Type",
                             )
-        # user_form_1._interactable_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
+        # user_form_1.interactable_widgets["smoothing_type"].model().item(1).setEnabled(False)  # disable Klippel
 
         user_form_1.add_row(pwi.IntSpinBox("smoothing_resolution_ppo",
                                            "Parts per octave resolution for the operation",
@@ -1352,10 +1352,10 @@ class ProcessingDialog(qtw.QDialog):
 
         def set_availability_of_resolution_option(smoothing_type_index):
             available = True if smoothing_type_index in (0, 1, 3) else False
-            user_form_1._interactable_widgets["smoothing_resolution_ppo"].setEnabled(
+            user_form_1.interactable_widgets["smoothing_resolution_ppo"].setEnabled(
                 available)
 
-        user_form_1._interactable_widgets["smoothing_type"].currentIndexChanged.connect(
+        user_form_1.interactable_widgets["smoothing_type"].currentIndexChanged.connect(
             set_availability_of_resolution_option)
 
         # ---- Outlier detection page
@@ -1443,7 +1443,7 @@ class ProcessingDialog(qtw.QDialog):
         self.tab_widget.setCurrentIndex(settings.processing_selected_tab)
         for i in range(self.tab_widget.count()):
             user_form = self.tab_widget.widget(i)
-            for key, widget in user_form._interactable_widgets.items():
+            for key, widget in user_form.interactable_widgets.items():
                 saved_setting = getattr(settings, key)
                 if isinstance(widget, qtw.QCheckBox):
                     widget.setChecked(saved_setting)
@@ -1465,7 +1465,7 @@ class ProcessingDialog(qtw.QDialog):
         settings.update("processing_selected_tab",
                              self.tab_widget.currentIndex())
 
-        for key, widget in user_form._interactable_widgets.items():
+        for key, widget in user_form.interactable_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update(key, widget.isChecked())
             elif isinstance(widget, qtw.QComboBox):
@@ -1551,7 +1551,7 @@ class ImportDialog(qtw.QDialog):
 
         # read values from settings
         values_new = {}
-        for key, widget in user_form._interactable_widgets.items():
+        for key, widget in user_form.interactable_widgets.items():
             if isinstance(widget, qtw.QComboBox):
                 values_new[key] = {"current_index": getattr(settings, key)}
             else:
@@ -1710,7 +1710,7 @@ class SettingsDialog(qtw.QDialog):
         layout.addWidget(button_group)
 
         # ---- read values from settings
-        for widget_name, widget in user_form._interactable_widgets.items():
+        for widget_name, widget in user_form.interactable_widgets.items():
             saved_setting = getattr(settings, widget_name)
             if isinstance(widget, qtw.QCheckBox):
                 widget.setChecked(saved_setting)
@@ -1738,7 +1738,7 @@ class SettingsDialog(qtw.QDialog):
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
             self.reject)
         button_group.buttons()["save_pushbutton"].clicked.connect(
-            partial(self._save_and_close,  user_form._interactable_widgets, settings))
+            partial(self._save_and_close,  user_form.interactable_widgets, settings))
 
     def _save_and_close(self, user_input_widgets, settings):
         mpl_styles = [
