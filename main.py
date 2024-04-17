@@ -46,7 +46,7 @@ app_definitions = {"app_name": "Linecraft",
                    "version": "0.2.4",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Linecraft - Frequency response plotting and statistics",
-                   "copyright": "Copyright (C) 2023 Kerem Basaran",
+                   "copyright": "Copyright (C) 2024 Kerem Basaran",
                    "icon_path": str(Path("./logo/icon.ico")),
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
@@ -1134,7 +1134,7 @@ class CurveAnalyze(qtw.QMainWindow):
             "Linecraft - Frequency response display and statistics tool",
             f"Version: {app_definitions['version']}",
             "",
-            f"Copyright (C) 2024 - {app_definitions['author']}",
+            f"{app_definitions['copyright']}",
             f"{app_definitions['website']}",
             f"{app_definitions['email']}",
             "",
@@ -1829,7 +1829,10 @@ def setup_logging(args):
     else:
         log_level = logging.INFO
     log_filename = Path.home().joinpath(f".{app_definitions['app_name'].lower()}.log")
-    logging.basicConfig(filename=log_filename, level=log_level, force=True)
+    logging.basicConfig(filename=log_filename,
+                        level=log_level,
+                        force=True,
+                        )
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
     logger = logging.getLogger()
