@@ -1,0 +1,1 @@
+find a better way to show which curve is selected (now it's 1 second of flashing)
