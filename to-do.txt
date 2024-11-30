@@ -1,0 +1,6 @@
+find a better way to show which curve is selected (now it's 1 second of flashing)
+reference selection window should be wider. it wraps often.
+put add remove
+unhandled exception when sound device is removed
+make x axis guidelines 10 per decade by default
+
