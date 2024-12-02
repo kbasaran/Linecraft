@@ -3,4 +3,5 @@ reference selection window should be wider. it wraps often.
 put add remove
 unhandled exception when sound device is removed
 make x axis guidelines 10 per decade by default
+graph axis limits not stored with save state
 

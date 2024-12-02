@@ -247,6 +247,7 @@ class CurveAnalyze(qtw.QMainWindow):
     def _create_widgets(self):
         # ---- Create graph and buttons widget
         self.graph = MatplotlibWidget(settings)
+        self.graph.set_ylimit_policy("SPL")
         self.graph_buttons = pwi.PushButtonGroup(
             {
                 "import_curve": "Import curve",
