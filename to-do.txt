@@ -5,5 +5,4 @@ unhandled exception when sound device is removed
 make x axis guidelines 10 per decade by default
 graph axis limits not stored with save state
 does smoothing take phase into account?
-use new FS detection function from signal tools
 
