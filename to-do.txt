@@ -1,5 +1,4 @@
 find a better way to show which curve is selected (now it's 1 second of flashing)
-reference selection window should be wider. it wraps often.
 unhandled exception when sound device is removed
 make x axis guidelines 10 per decade by default
 graph axis limits not stored with save state

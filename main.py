@@ -906,6 +906,8 @@ class CurveAnalyze(qtw.QMainWindow):
 
         if "result_text" in results.keys():
             result_text_box = pwi.ResultTextBox(results["title"], results["result_text"], parent=self)
+            text_width = qtg.QFontMetrics(result_text_box.font()).averageCharWidth()
+            result_text_box.setMinimumWidth(text_width * 92)
             result_text_box.show()
             to_beep = True
 
