@@ -1,5 +1,5 @@
 # Linecraft - Frequency response display and statistics tool
-# Copyright (C) 2024 - Kerem Basaran
+# Copyright (C) 2025 - Kerem Basaran
 # https://github.com/kbasaran
 __email__ = "kbasaran@gmail.com"
 
@@ -43,10 +43,10 @@ import logging
 import time
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.2.4",
+                   "version": "0.2.4rc",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Linecraft - Frequency response plotting and statistics",
-                   "copyright": "Copyright (C) 2024 Kerem Basaran",
+                   "copyright": "Copyright (C) 2025 Kerem Basaran",
                    "icon_path": str(Path("./logo/icon.ico")),
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
