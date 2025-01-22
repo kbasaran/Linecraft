@@ -246,7 +246,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def _create_widgets(self):
         # ---- Create graph and buttons widget
-        self.graph = MatplotlibWidget(settings)
+        self.graph = MatplotlibWidget(settings, layout_engine="tight")
         self.graph.set_y_limits_policy("SPL")
         self.graph_buttons = pwi.PushButtonGroup(
             {
@@ -1289,6 +1289,8 @@ class ProcessingDialog(qtw.QDialog):
         self.setWindowTitle("Processing Menu")
         layout = qtw.QVBoxLayout(self)
         self.tab_widget = qtw.QTabWidget()
+        text_width = qtg.QFontMetrics(self.font()).averageCharWidth()
+        self.tab_widget.setMinimumWidth(text_width * 100)
         layout.addWidget(self.tab_widget)
 
         # dict of tuples. key is index of tab. value is tuple with (UserForm, name of function to use for its calculation)
