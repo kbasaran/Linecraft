@@ -85,6 +85,8 @@ class Settings:
     smoothing_bandwidth: int = 6
     outlier_fence_iqr: float = 10.
     outlier_action: int = 0
+    sum_selected: bool = True
+    diff_selected: bool = True
     matplotlib_style: str = "bmh"
     processing_interpolation_ppo: int = 96
     interpolate_must_contain_hz: int = 1000
@@ -910,6 +912,35 @@ class CurveAnalyze(qtw.QMainWindow):
         if to_beep:
             self.signal_good_beep.emit()
 
+    def _curve_summation(self):
+        selected_curves = self.get_selected_curves()
+        length_curves = len(selected_curves)
+        if length_curves != 2:
+            raise RuntimeError(
+                "Summation operations can be done only when two curves are selected.")
+        
+        curves_sum, curves_diff = signal_tools.curve_summation(selected_curves)
+        
+        representative_base_name = find_longest_match_in_name(
+            [curve.get_base_name_and_suffixes() for curve in selected_curves]
+        )
+
+        for curve in (curves_sum, curves_diff):
+            curve.set_name_base(representative_base_name)
+
+        curves_sum.add_name_suffix(f"sum")
+        curves_diff.add_name_suffix(f"difference")
+
+        result_curves = []
+        if settings.sum_selected:
+            result_curves.append(curves_sum)
+        if settings.diff_selected:
+            result_curves.append(curves_diff)
+
+        line2d_kwargs = {"color": "r", "linestyle": "--"}
+
+        return {"to_insert": {0: result_curves}, "line2d_kwargs": line2d_kwargs}
+
     def _mean_and_median_analysis(self):
         selected_curves = self.get_selected_curves()
         length_curves = len(selected_curves)
@@ -936,7 +967,7 @@ class CurveAnalyze(qtw.QMainWindow):
         if settings.median_selected:
             result_curves.append(curve_median)
 
-        line2d_kwargs = {"color": "k", "linestyle": "-"}
+        line2d_kwargs = {"color": "k"}
 
         return {"to_insert": {0: result_curves}, "line2d_kwargs": line2d_kwargs}
 
@@ -1293,7 +1324,7 @@ class ProcessingDialog(qtw.QDialog):
         self.tab_widget.setMinimumWidth(text_width * 100)
         layout.addWidget(self.tab_widget)
 
-        # dict of tuples. key is index of tab. value is tuple with (UserForm, name of function to use for its calculation)
+        # dict of tuples. key is index of tab. value is a tuple(UserForm, processing_function_name)
         self.user_forms_and_recipient_functions = {}
 
         # ---- Statistics page
@@ -1304,6 +1335,7 @@ class ProcessingDialog(qtw.QDialog):
         self.user_forms_and_recipient_functions[i] = (
             user_form_0, "_mean_and_median_analysis")
 
+       # ---- Statistics page
         user_form_0.add_row(pwi.CheckBox("mean_selected",
                                          "Returns a curve showing the mean value of level in dB."
                                          "Preferred method of estimating representtive curve when sample population is small and symmetrically distributed.",
@@ -1431,6 +1463,27 @@ class ProcessingDialog(qtw.QDialog):
                                            "Setting to 1 means there will be no weighting."
                                            "Setting to 0 means the range will not be considered in the calculation"),
                             "Critical range weight",
+                            )
+        
+        # ---- Summation page
+        user_form_5 = pwi.UserForm()
+        # tab page is the UserForm widget
+        self.tab_widget.addTab(user_form_5, "Summation")
+        i = self.tab_widget.indexOf(user_form_5)
+        self.user_forms_and_recipient_functions[i] = (
+            user_form_5, "_curve_summation")
+        user_form_5.add_row(qtw.QLabel("Make sure you selected only two curves before continuing."))
+        user_form_5.add_row(pwi.CheckBox("sum_selected",
+                                         "Returns the sum of the curves. Curves will be interpolated to all the frequency points provided in either of the curves."
+                                         ),
+                            "Summation",
+                            )
+
+        user_form_5.add_row(pwi.CheckBox("diff_selected",
+                                         "Returns the distance between the two curves."
+                                         " Curves will be interpolated to all the frequency points provided in either of the curves."
+                                         ),
+                            "Difference",
                             )
 
         # ---- Common buttons for the dialog
