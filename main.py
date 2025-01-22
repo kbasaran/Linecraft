@@ -1321,7 +1321,8 @@ class ProcessingDialog(qtw.QDialog):
         layout = qtw.QVBoxLayout(self)
         self.tab_widget = qtw.QTabWidget()
         text_width = qtg.QFontMetrics(self.font()).averageCharWidth()
-        self.tab_widget.setMinimumWidth(text_width * 100)
+        self.tab_widget.setMinimumWidth(text_width * 92)
+        # self.tab_widget.setSizePolicy(qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Preferred)
         layout.addWidget(self.tab_widget)
 
         # dict of tuples. key is index of tab. value is a tuple(UserForm, processing_function_name)
