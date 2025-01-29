@@ -1323,12 +1323,12 @@ class ProcessingDialog(qtw.QDialog):
         super().__init__(parent=parent)
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         self.setWindowTitle("Processing Menu")
-        layout = qtw.QVBoxLayout(self)
+        self.setLayout(qtw.QVBoxLayout())
         self.tab_widget = qtw.QTabWidget()
         text_width = qtg.QFontMetrics(self.font()).averageCharWidth()
         self.tab_widget.setMinimumWidth(text_width * 92)
         # self.tab_widget.setSizePolicy(qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Preferred)
-        layout.addWidget(self.tab_widget)
+        self.layout().addWidget(self.tab_widget)
 
         # dict of tuples. key is index of tab. value is a tuple(UserForm, processing_function_name)
         self.user_forms_and_recipient_functions = {}
@@ -1499,7 +1499,7 @@ class ProcessingDialog(qtw.QDialog):
                                            {},
                                            )
         button_group.buttons()["run_pushbutton"].setDefault(True)
-        layout.addWidget(button_group)
+        self.layout().addWidget(button_group)
 
         # ---- Update parameters from settings
         self.tab_widget.setCurrentIndex(settings.processing_selected_tab)
@@ -1549,12 +1549,12 @@ class ImportDialog(qtw.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         # self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
-        layout = qtw.QVBoxLayout(self)
+        self.setLayout(qtw.QVBoxLayout())
         self.setWindowTitle("Import table with curve(s)")
 
         # ---- Form
         user_form = pwi.UserForm()
-        layout.addWidget(user_form)
+        self.layout().addWidget(user_form)
 
         user_form.add_row(pwi.ComboBox("import_table_layout_type",
                                        "Choose how the data is laid out in the raw imported data.",
@@ -1609,7 +1609,7 @@ class ImportDialog(qtw.QDialog):
                                            {},
                                            )
         button_group.buttons()["open_file_pushbutton"].setDefault(True)
-        layout.addWidget(button_group)
+        self.layout().addWidget(button_group)
 
         # read values from settings
         values_new = {}
@@ -1693,11 +1693,11 @@ class SettingsDialog(qtw.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
-        layout = qtw.QVBoxLayout(self)
+        self.setLayout(qtw.QVBoxLayout())
 
         # ---- Form
         user_form = pwi.UserForm()
-        layout.addWidget(user_form)
+        self.layout().addWidget(user_form)
 
         user_form.add_row(pwi.CheckBox("show_legend", "Show legend on the graph"),
                           "Show legend")
@@ -1769,7 +1769,7 @@ class SettingsDialog(qtw.QDialog):
                                            {},
                                            )
         button_group.buttons()["save_pushbutton"].setDefault(True)
-        layout.addWidget(button_group)
+        self.layout().addWidget(button_group)
 
         # ---- read values from settings
         for widget_name, widget in user_form.interactable_widgets.items():
