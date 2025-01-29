@@ -1390,14 +1390,11 @@ class ProcessingDialog(qtw.QDialog):
                                            ),
                             "Bandwidth (1/octave)",
                             )
-
-        def set_availability_of_resolution_option(smoothing_type_index):
-            available = True if smoothing_type_index in (0, 1, 3) else False
-            user_form_1.interactable_widgets["smoothing_resolution_ppo"].setEnabled(
-                available)
-
+        
+        # Disable the resolution spin box if smoothing type is rectangular.
         user_form_1.interactable_widgets["smoothing_type"].currentIndexChanged.connect(
-            set_availability_of_resolution_option)
+            lambda x: user_form_1.interactable_widgets["smoothing_resolution_ppo"].setEnabled(x != 2)
+            )
 
         # ---- Outlier detection page
         user_form_2 = pwi.UserForm()
