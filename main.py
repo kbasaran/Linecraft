@@ -1295,19 +1295,22 @@ class CurveAnalyze(qtw.QMainWindow):
                                                filter='Linecraft files (*.lc)',
                                                )[0]
         if file:
-            self.load_state_from_file(Path(file))
+            self.load_state_from_file(file)
         else:
             pass  # canceled file select
 
-    def load_state_from_file(self, file: Path):
+    def load_state_from_file(self, file: (str, Path)):
+        
+        try:
+            my_file = Path(file)
+        except TypeError as e:
+            raise TypeError(f"Unable to convert argument '{file}' into a file path. Error: {e}")
 
-        if not isinstance(file, Path):
-            raise TypeError("Input type must be 'pathlib.Path'")
-        if not file.is_file():
+        if not my_file.is_file():
             raise FileNotFoundError(file)
 
-        settings.update("last_used_folder", str(file.parent))
-        with open(file, "rb") as f:
+        settings.update("last_used_folder", str(my_file.parent))
+        with open(my_file, "rb") as f:
             self.set_widget_state(f.read())
         self.signal_good_beep.emit()
 
@@ -1936,7 +1939,7 @@ def main():
     # ---- Are we loading a state file?
     if args.infile:
         logger.info(f"Starting application with argument infile: {args.infile}")
-        mw.load_state_from_file(args.infile.name)
+        mw.load_state_from_file(args.infile)
 
     # --- Go
     mw.show()
