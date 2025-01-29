@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from difflib import SequenceMatcher
 from dataclasses import dataclass, fields
+from copy import copy, deepcopy
 
 # from matplotlib.backends.qt_compat import QtWidgets as qtw
 from PySide6 import QtWidgets as qtw
@@ -945,6 +946,26 @@ class CurveAnalyze(qtw.QMainWindow):
         line2d_kwargs = {"color": "r", "linestyle": "--"}
 
         return {"to_insert": {0: result_curves}, "line2d_kwargs": line2d_kwargs}
+
+
+    def _add_gain(self):
+        selected_curves = self.get_selected_curves()
+        length_curves = len(selected_curves)
+        gain_value = settings.add_gain_value
+        if length_curves < 1:
+            raise RuntimeError(
+                "No curves selected.")
+
+        result_curves = [deepcopy(curve) for curve in selected_curves]
+        for new_curve in result_curves:
+            new_curve.set_xy((new_curve.get_x(), new_curve.get_y() + gain_value))
+            desc_text = f"subtracted {-gain_value:.2f}dB" if gain_value < 0 else f"added {gain_value:.2f}dB"
+            new_curve.add_name_suffix(desc_text)
+
+        line2d_kwargs = {"color": "k", "linestyle": "-"}
+
+        return {"to_insert": {0: result_curves}, "line2d_kwargs": line2d_kwargs}
+
 
     def _mean_and_median_analysis(self):
         selected_curves = self.get_selected_curves()
