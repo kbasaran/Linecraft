@@ -87,6 +87,9 @@ class Settings:
     outlier_action: int = 0
     sum_selected: bool = True
     diff_selected: bool = True
+    average_calc_f_start: float = 20
+    average_calc_f_end: float = 20000
+    add_gain_value: float = 0
     matplotlib_style: str = "bmh"
     processing_interpolation_ppo: int = 96
     interpolate_must_contain_hz: int = 1000
@@ -1488,6 +1491,37 @@ class ProcessingDialog(qtw.QDialog):
                                          ),
                             "Difference",
                             )
+
+        
+        # ---- Calculate average page
+        user_form_6 = pwi.UserForm()
+        # tab page is the UserForm widget
+        self.tab_widget.addTab(user_form_6, "Sensitivity")
+        i = self.tab_widget.indexOf(user_form_6)
+        self.user_forms_and_recipient_functions[i] = (
+            user_form_6, "_calc_sensitivity")
+        
+        user_form_6.add_row(qtw.QLabel("Calculate sensitivity for selected curves."))
+        user_form_6.add_row(pwi.IntSpinBox("average_calc_f_start", "Starting frequency for average value calculation."),
+                            "Start frequency (Hz)")
+        user_form_6.add_row(pwi.IntSpinBox("average_calc_f_end", "End frequency for average value calculation."),
+                            "End frequency (Hz)")
+        
+        # ---- Gain page
+        user_form_7 = pwi.UserForm()
+        # tab page is the UserForm widget
+        self.tab_widget.addTab(user_form_7, "Gain")
+        i = self.tab_widget.indexOf(user_form_7)
+        self.user_forms_and_recipient_functions[i] = (
+            user_form_7, "_add_gain")
+        
+        user_form_7.add_row(qtw.QLabel("Shift selected curves by this value in y axis."))
+        user_form_7.add_row(pwi.FloatSpinBox("add_gain_value",
+                                             "Shift the curve by this value.",
+                                             min_max = (-999.99, 999.99),
+                                             ),
+                            "Value")
+
 
         # ---- Common buttons for the dialog
         button_group = pwi.PushButtonGroup({"run": "Run",
