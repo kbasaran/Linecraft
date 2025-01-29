@@ -1327,11 +1327,17 @@ class ProcessingDialog(qtw.QDialog):
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         self.setWindowTitle("Processing Menu")
         self.setLayout(qtw.QVBoxLayout())
-        self.tab_widget = qtw.QTabWidget()
+        self.tab_widget = qtw.QTabWidget(tabPosition=qtw.QTabWidget.TabPosition.East)
         text_width = qtg.QFontMetrics(self.font()).averageCharWidth()
-        self.tab_widget.setMinimumWidth(text_width * 92)
-        # self.tab_widget.setSizePolicy(qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Preferred)
+        # self.tab_widget.setMinimumWidth(text_width * 92)
         self.layout().addWidget(self.tab_widget)
+        
+        class TabTitle(qtw.QLabel):
+            def __init__(self, text:str):
+                super().__init__()
+                self.setText(text)
+                self.setStyleSheet("font-weight: bold")
+                self.setAlignment(qtg.Qt.AlignmentFlag.AlignLeft)
 
         # dict of tuples. key is index of tab. value is a tuple(UserForm, processing_function_name)
         self.user_forms_and_recipient_functions = {}
@@ -1343,6 +1349,9 @@ class ProcessingDialog(qtw.QDialog):
         i = self.tab_widget.indexOf(user_form_0)
         self.user_forms_and_recipient_functions[i] = (
             user_form_0, "_mean_and_median_analysis")
+        
+        user_form_0.add_row(TabTitle("Statistics"))
+        user_form_0.add_row(qtw.QLabel("Select multiple curves before proceeding."))
 
        # ---- Statistics page
         user_form_0.add_row(pwi.CheckBox("mean_selected",
@@ -1366,6 +1375,8 @@ class ProcessingDialog(qtw.QDialog):
         i = self.tab_widget.indexOf(user_form_1)
         self.user_forms_and_recipient_functions[i] = (
             user_form_1, "_smoothen_curves")
+        
+        user_form_1.add_row(TabTitle("Smoothing"))
 
         user_form_1.add_row(pwi.ComboBox("smoothing_type",
                                          None,
@@ -1406,6 +1417,8 @@ class ProcessingDialog(qtw.QDialog):
         i = self.tab_widget.indexOf(user_form_2)
         self.user_forms_and_recipient_functions[i] = (
             user_form_2, "_outlier_detection")
+        
+        user_form_2.add_row(TabTitle("Outlier Detection"))
 
         user_form_2.add_row(pwi.FloatSpinBox("outlier_fence_iqr",
                                              "Fence post for outlier detection using IQR method. Unit is the interquartile range of the data points for given frequency.",
@@ -1433,6 +1446,8 @@ class ProcessingDialog(qtw.QDialog):
         self.user_forms_and_recipient_functions[i] = (
             user_form_3, "_interpolate_curves")
 
+        user_form_3.add_row(TabTitle("Interpolation"))
+        user_form_3.add_row(qtw.QLabel("Interpolate selected curves to new octave spaced points."))
         user_form_3.add_row(pwi.IntSpinBox("processing_interpolation_ppo",
                                            None,
                                            min_max=(1, 99999),
@@ -1447,6 +1462,9 @@ class ProcessingDialog(qtw.QDialog):
         i = self.tab_widget.indexOf(user_form_4)
         self.user_forms_and_recipient_functions[i] = (
             user_form_4, "_show_best_fits")
+        
+        user_form_4.add_row(TabTitle("Best fit to current"))
+        user_form_4.add_row(qtw.QLabel("Find the best fit to the selected curve."))
 
         user_form_4.add_row(pwi.IntSpinBox("best_fit_calculation_resolution_ppo",
                                            "How many calculation points per octave to use for the calculation"
@@ -1478,7 +1496,10 @@ class ProcessingDialog(qtw.QDialog):
         i = self.tab_widget.indexOf(user_form_5)
         self.user_forms_and_recipient_functions[i] = (
             user_form_5, "_curve_summation")
-        user_form_5.add_row(qtw.QLabel("Make sure you selected only two curves before continuing."))
+
+        user_form_5.add_row(TabTitle("Summation"))
+        user_form_5.add_row(qtw.QLabel("Calculate the sum of or the difference between two selected curves."))
+
         user_form_5.add_row(pwi.CheckBox("sum_selected",
                                          "Returns the sum of the curves. Curves will be interpolated to all the frequency points provided in either of the curves."
                                          ),
@@ -1493,7 +1514,7 @@ class ProcessingDialog(qtw.QDialog):
                             )
 
         
-        # ---- Calculate average page
+        # ---- Sensitivity page
         user_form_6 = pwi.UserForm()
         # tab page is the UserForm widget
         self.tab_widget.addTab(user_form_6, "Sensitivity")
@@ -1501,7 +1522,9 @@ class ProcessingDialog(qtw.QDialog):
         self.user_forms_and_recipient_functions[i] = (
             user_form_6, "_calc_sensitivity")
         
-        user_form_6.add_row(qtw.QLabel("Calculate sensitivity for selected curves."))
+        user_form_6.add_row(TabTitle("Sensitivity"))
+        user_form_6.add_row(qtw.QLabel("Calculate average value in given frequency range."))
+        
         user_form_6.add_row(pwi.IntSpinBox("average_calc_f_start", "Starting frequency for average value calculation."),
                             "Start frequency (Hz)")
         user_form_6.add_row(pwi.IntSpinBox("average_calc_f_end", "End frequency for average value calculation."),
@@ -1515,7 +1538,9 @@ class ProcessingDialog(qtw.QDialog):
         self.user_forms_and_recipient_functions[i] = (
             user_form_7, "_add_gain")
         
+        user_form_7.add_row(TabTitle("Gain"))
         user_form_7.add_row(qtw.QLabel("Shift selected curves by this value in y axis."))
+        
         user_form_7.add_row(pwi.FloatSpinBox("add_gain_value",
                                              "Shift the curve by this value.",
                                              min_max = (-999.99, 999.99),
