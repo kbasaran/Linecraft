@@ -947,6 +947,31 @@ class CurveAnalyze(qtw.QMainWindow):
 
         return {"to_insert": {0: result_curves}, "line2d_kwargs": line2d_kwargs}
 
+    def _calculate_sensitivity(self):
+        selected_curves = self.get_selected_curves()
+        length_curves = len(selected_curves)
+        if length_curves < 1:
+            raise RuntimeError(
+                "No curves selected.")
+            
+        f_min, f_max = settings.average_calc_f_start, settings.average_calc_f_end
+        average_value = {curve.get_full_name(): signal_tools.calculate_average(curve, f_min, f_max)
+                         for curve in selected_curves}
+                
+        # Build into dataframe        
+        df = pd.DataFrame.from_dict(average_value,
+                                    orient='index',
+                                    columns=["Average values"],
+                                    dtype=float,
+                                    )
+        
+        # ---- Generate screen text
+        result_text = "-- Average value for selected curves --"
+        result_text = f"Start frequency: {settings.average_calc_f_start:.5g} Hz      End frequency: {settings.average_calc_f_end:.5g} Hz"
+        result_text += "\n\n"
+        result_text += tabulate(df[["Average values"]], headers=("Item name", "Average"), floatfmt=(".2f"))
+
+        return {"title": "Average values", "result_text": result_text}
 
     def _add_gain(self):
         selected_curves = self.get_selected_curves()
@@ -1543,18 +1568,26 @@ class ProcessingDialog(qtw.QDialog):
         # ---- Sensitivity page
         user_form_6 = pwi.UserForm()
         # tab page is the UserForm widget
-        self.tab_widget.addTab(user_form_6, "Sensitivity")
+        self.tab_widget.addTab(user_form_6, "Average value")
         i = self.tab_widget.indexOf(user_form_6)
         self.user_forms_and_recipient_functions[i] = (
-            user_form_6, "_calc_sensitivity")
+            user_form_6, "_calculate_sensitivity")
         
-        user_form_6.add_row(TabTitle("Sensitivity"))
+        user_form_6.add_row(TabTitle("Average value (sensitivity)"))
         user_form_6.add_row(qtw.QLabel("Calculate average value in given frequency range."))
         
-        user_form_6.add_row(pwi.IntSpinBox("average_calc_f_start", "Starting frequency for average value calculation."),
-                            "Start frequency (Hz)")
-        user_form_6.add_row(pwi.IntSpinBox("average_calc_f_end", "End frequency for average value calculation."),
-                            "End frequency (Hz)")
+        user_form_6.add_row(pwi.FloatSpinBox("average_calc_f_start",
+                                             "Starting frequency for average value calculation.",
+                                             decimals=1,
+                                             ),
+                            "Start frequency (Hz)",
+                            )
+        user_form_6.add_row(pwi.FloatSpinBox("average_calc_f_end",
+                                             "End frequency for average value calculation.",
+                                             decimals=1,
+                                             ),
+                            "End frequency (Hz)",
+                            )
         
         
         # ---- Gain page
