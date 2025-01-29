@@ -1363,6 +1363,7 @@ class ProcessingDialog(qtw.QDialog):
         # dict of tuples. key is index of tab. value is a tuple(UserForm, processing_function_name)
         self.user_forms_and_recipient_functions = {}
 
+
         # ---- Statistics page
         user_form_0 = pwi.UserForm()
         # tab page is the UserForm widget
@@ -1374,7 +1375,6 @@ class ProcessingDialog(qtw.QDialog):
         user_form_0.add_row(TabTitle("Statistics"))
         user_form_0.add_row(qtw.QLabel("Select multiple curves before proceeding."))
 
-       # ---- Statistics page
         user_form_0.add_row(pwi.CheckBox("mean_selected",
                                          "Returns a curve showing the mean value of level in dB."
                                          "Preferred method of estimating representtive curve when sample population is small and symmetrically distributed.",
@@ -1388,6 +1388,7 @@ class ProcessingDialog(qtw.QDialog):
                                          ),
                             "Calculate median",
                             )
+
 
         # ---- Smoothing page
         user_form_1 = pwi.UserForm()
@@ -1431,6 +1432,7 @@ class ProcessingDialog(qtw.QDialog):
             lambda x: user_form_1.interactable_widgets["smoothing_resolution_ppo"].setEnabled(x != 2)
             )
 
+
         # ---- Outlier detection page
         user_form_2 = pwi.UserForm()
         # tab page is the UserForm widget
@@ -1459,6 +1461,7 @@ class ProcessingDialog(qtw.QDialog):
                             "Action on outliers",
                             )
 
+
         # ---- Interpolation page
         user_form_3 = pwi.UserForm()
         # tab page is the UserForm widget
@@ -1475,6 +1478,7 @@ class ProcessingDialog(qtw.QDialog):
                                            ),
                             "Points per octave",
                             )
+
 
         # ---- Show best fits
         user_form_4 = pwi.UserForm()
@@ -1509,6 +1513,7 @@ class ProcessingDialog(qtw.QDialog):
                                            "Setting to 0 means the range will not be considered in the calculation"),
                             "Critical range weight",
                             )
+        
         
         # ---- Summation page
         user_form_5 = pwi.UserForm()
@@ -1550,6 +1555,7 @@ class ProcessingDialog(qtw.QDialog):
                             "Start frequency (Hz)")
         user_form_6.add_row(pwi.IntSpinBox("average_calc_f_end", "End frequency for average value calculation."),
                             "End frequency (Hz)")
+        
         
         # ---- Gain page
         user_form_7 = pwi.UserForm()
