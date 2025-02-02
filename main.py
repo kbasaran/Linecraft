@@ -1772,20 +1772,9 @@ class ImportDialog(qtw.QDialog):
 
         no_header = form_values["import_table_no_line_headers"]
         no_index = form_values["import_table_no_columns"]
-
-        # layout_type_current_index = form_values["import_table_layout_type"]["current_index"]
-        # layout_type = form_values["import_table_layout_type"]["items"][layout_type_current_index][1]  # index 0 is name, 1 is data
-
-        # delimiter_current_index = form_values["import_table_delimiter"]["current_index"]
-        # delimiter = form_values["import_table_delimiter"]["items"][delimiter_current_index][1]  # index 0 is name, 1 is data
-
-        # decimal_separator_current_index = form_values["import_table_decimal_separator"]["current_index"]
-        # decimal_separator = form_values["import_table_decimal_separator"]["items"][decimal_separator_current_index][1]  # index 0 is name, 1 is data
-        
         layout_type = form_values["import_table_layout_type"]
         delimiter = form_values["import_table_delimiter"]
         decimal_separator = form_values["import_table_decimal_separator"]
-        
 
         # Do validations
         if decimal_separator == delimiter:
