@@ -4,3 +4,4 @@ make x axis guidelines 10 per decade by default
 graph axis limits not stored with save state
 does smoothing take phase into account?
 make pixel dimensions relative to font
+look at a limited range for outlier detection
