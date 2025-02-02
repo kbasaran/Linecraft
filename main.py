@@ -78,14 +78,15 @@ class Settings:
     max_legend_size: int = 10
     import_ppo: int = 96
     export_ppo: int = 96
+    
     processing_selected_tab: int = 0
     mean_selected: bool = False
     median_selected: bool = True
-    smoothing_type: int = 0
+    smoothing_type: str = "Butterworth 8th, log spaced"
     smoothing_resolution_ppo: int = 96
     smoothing_bandwidth: int = 6
     outlier_fence_iqr: float = 10.
-    outlier_action: int = 0
+    outlier_action: str = "None"
     sum_selected: bool = True
     diff_selected: bool = True
     average_calc_f_start: float = 20
@@ -95,15 +96,17 @@ class Settings:
     processing_interpolation_ppo: int = 96
     interpolate_must_contain_hz: int = 1000
     graph_grids: str = "default"
+    
     best_fit_calculation_resolution_ppo: int = 24
     best_fit_critical_range_start_freq: int = 200
     best_fit_critical_range_end_freq: int = 5000
     best_fit_critical_range_weight: int = 1
+    
     import_table_no_line_headers: int = 1
     import_table_no_columns: int = 1
-    import_table_layout_type: int = 0
-    import_table_delimiter: int = 0
-    import_table_decimal_separator: int = 0
+    import_table_layout_type: str = "Headers are frequencies, indexes are names"
+    import_table_delimiter: str = "Tab"
+    import_table_decimal_separator: str = ". (dot)"
 
     def __post_init__(self):
         settings_storage_title = self.app_name + " - " + (self.version.split(".")[0] if "." in self.version else "")
@@ -1731,7 +1734,7 @@ class ImportDialog(qtw.QDialog):
         values_new = {}
         for key, widget in user_form.interactable_widgets.items():
             if isinstance(widget, qtw.QComboBox):
-                values_new[key] = {"current_index": getattr(settings, key)}
+                values_new[key] = {"current_text": getattr(settings, key)}
             else:
                 values_new[key] = getattr(settings, key)
         user_form.update_form_values(values_new)
@@ -1746,8 +1749,8 @@ class ImportDialog(qtw.QDialog):
     def _save_form_values_to_settings(self, user_form: pwi.UserForm):
         values = user_form.get_form_values()
         for widget_name, value in values.items():
-            if isinstance(value, dict) and "current_index" in value.keys():
-                settings.update(widget_name, value["current_index"])
+            if isinstance(value, dict) and "current_text" in value.keys():  # if a qcombobox
+                settings.update(widget_name, value["current_text"])
             else:
                 settings.update(widget_name, value)
 
@@ -1771,13 +1774,13 @@ class ImportDialog(qtw.QDialog):
         no_index = form_values["import_table_no_columns"]
 
         layout_type_current_index = form_values["import_table_layout_type"]["current_index"]
-        layout_type = form_values["import_table_layout_type"]["items"][layout_type_current_index][1]
+        layout_type = form_values["import_table_layout_type"]["items"][layout_type_current_index][1]  # index 0 is name, 1 is data
 
         delimiter_current_index = form_values["import_table_delimiter"]["current_index"]
-        delimiter = form_values["import_table_delimiter"]["items"][delimiter_current_index][1]
+        delimiter = form_values["import_table_delimiter"]["items"][delimiter_current_index][1]  # index 0 is name, 1 is data
 
         decimal_separator_current_index = form_values["import_table_decimal_separator"]["current_index"]
-        decimal_separator = form_values["import_table_decimal_separator"]["items"][decimal_separator_current_index][1]
+        decimal_separator = form_values["import_table_decimal_separator"]["items"][decimal_separator_current_index][1]  # index 0 is name, 1 is data
 
         # Do validations
         if decimal_separator == delimiter:
