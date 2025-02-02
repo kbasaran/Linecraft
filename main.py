@@ -78,14 +78,15 @@ class Settings:
     max_legend_size: int = 10
     import_ppo: int = 96
     export_ppo: int = 96
+    
     processing_selected_tab: int = 0
     mean_selected: bool = False
     median_selected: bool = True
-    smoothing_type: int = 0
+    smoothing_type: str = "Butterworth 8th, log spaced"
     smoothing_resolution_ppo: int = 96
     smoothing_bandwidth: int = 6
     outlier_fence_iqr: float = 10.
-    outlier_action: int = 0
+    outlier_action: str = "None"
     sum_selected: bool = True
     diff_selected: bool = True
     average_calc_f_start: float = 20
@@ -99,11 +100,12 @@ class Settings:
     best_fit_critical_range_start_freq: int = 200
     best_fit_critical_range_end_freq: int = 5000
     best_fit_critical_range_weight: int = 1
+    
     import_table_no_line_headers: int = 1
     import_table_no_columns: int = 1
-    import_table_layout_type: int = 0
-    import_table_delimiter: int = 0
-    import_table_decimal_separator: int = 0
+    import_table_layout_type: str = "Headers are frequencies, indexes are names"
+    import_table_delimiter: str = "Tab"
+    import_table_decimal_separator: str = ". (dot)"
 
     def __post_init__(self):
         settings_storage_title = self.app_name + " - " + (self.version.split(".")[0] if "." in self.version else "")
@@ -678,7 +680,7 @@ class CurveAnalyze(qtw.QMainWindow):
             )
 
         # ---- transpose if frequencies are in indexes
-        if import_settings["layout_type"] == 1:
+        if import_settings["layout_type"] == "Indexes are frequencies, headers are names":
             df = df.transpose()
 
         # ---- validate curve and header validity
@@ -1046,11 +1048,11 @@ class CurveAnalyze(qtw.QMainWindow):
         lower_fence.add_name_suffix(f"-{settings.outlier_fence_iqr:.1f}xIQR, {length_curves} curves")
         upper_fence.add_name_suffix(f"+{settings.outlier_fence_iqr:.1f}xIQR, {length_curves} curves")
 
-        if settings.outlier_action == 1 and outlier_indexes:  # Hide
+        if settings.outlier_action == "Hide" and outlier_indexes:
             self.hide_curves(indexes=outlier_indexes)
             for curve in result_curves:
                 curve.add_name_suffix("calculated before hiding outliers")
-        elif settings.outlier_action == 2 and outlier_indexes:  # Remove
+        elif settings.outlier_action == "Remove" and outlier_indexes:
             self.remove_curves(indexes=outlier_indexes)
             for curve in result_curves:
                 curve.add_name_suffix("calculated before removing outliers")
@@ -1149,26 +1151,26 @@ class CurveAnalyze(qtw.QMainWindow):
 
         for i_curve, curve in selected_curves.items():
 
-            if settings.smoothing_type == 0:
+            if settings.smoothing_type == "Butterworth 8th, log spaced":
                 xy = signal_tools.smooth_log_spaced_curve_butterworth_fast(*curve.get_xy(),
                                                                            bandwidth=settings.smoothing_bandwidth,
                                                                            resolution=settings.smoothing_resolution_ppo,
                                                                            order=8,
                                                                            )
 
-            elif settings.smoothing_type == 1:
+            elif settings.smoothing_type == "Butterworth 4th, log spaced":
                 xy = signal_tools.smooth_log_spaced_curve_butterworth_fast(*curve.get_xy(),
                                                                            bandwidth=settings.smoothing_bandwidth,
                                                                            resolution=settings.smoothing_resolution_ppo,
                                                                            order=4,
                                                                            )
 
-            elif settings.smoothing_type == 2:
+            elif settings.smoothing_type == "Rectangular, w/o interpolation":
                 xy = signal_tools.smooth_curve_rectangular_no_interpolation(*curve.get_xy(),
                                                                             bandwidth=settings.smoothing_bandwidth,
                                                                             )
 
-            elif settings.smoothing_type == 3:
+            elif settings.smoothing_type == "Gaussian, log spaced":
                 xy = signal_tools.smooth_curve_gaussian(*curve.get_xy(),
                                                         bandwidth=settings.smoothing_bandwidth,
                                                         resolution=settings.smoothing_resolution_ppo,
@@ -1626,7 +1628,7 @@ class ProcessingDialog(qtw.QDialog):
                 if isinstance(widget, qtw.QCheckBox):
                     widget.setChecked(saved_setting)
                 elif isinstance(widget, qtw.QComboBox):
-                    widget.setCurrentIndex(saved_setting)
+                    widget.setCurrentText(saved_setting)
                 else:
                     widget.setValue(saved_setting)
 
@@ -1647,7 +1649,7 @@ class ProcessingDialog(qtw.QDialog):
             if isinstance(widget, qtw.QCheckBox):
                 settings.update(key, widget.isChecked())
             elif isinstance(widget, qtw.QComboBox):
-                settings.update(key, widget.currentIndex())
+                settings.update(key, widget.currentText())
             else:
                 settings.update(key, widget.value())
 
@@ -1731,7 +1733,7 @@ class ImportDialog(qtw.QDialog):
         values_new = {}
         for key, widget in user_form.interactable_widgets.items():
             if isinstance(widget, qtw.QComboBox):
-                values_new[key] = {"current_index": getattr(settings, key)}
+                values_new[key] = {"current_text": getattr(settings, key)}
             else:
                 values_new[key] = getattr(settings, key)
         user_form.update_form_values(values_new)
@@ -1746,8 +1748,8 @@ class ImportDialog(qtw.QDialog):
     def _save_form_values_to_settings(self, user_form: pwi.UserForm):
         values = user_form.get_form_values()
         for widget_name, value in values.items():
-            if isinstance(value, dict) and "current_index" in value.keys():
-                settings.update(widget_name, value["current_index"])
+            if isinstance(value, dict) and "current_text" in value.keys():  # if a qcombobox
+                settings.update(widget_name, value["current_text"])
             else:
                 settings.update(widget_name, value)
 
@@ -1770,22 +1772,27 @@ class ImportDialog(qtw.QDialog):
         no_header = form_values["import_table_no_line_headers"]
         no_index = form_values["import_table_no_columns"]
 
-        layout_type_current_index = form_values["import_table_layout_type"]["current_index"]
-        layout_type = form_values["import_table_layout_type"]["items"][layout_type_current_index][1]
+        # layout_type_current_index = form_values["import_table_layout_type"]["current_index"]
+        # layout_type = form_values["import_table_layout_type"]["items"][layout_type_current_index][1]  # index 0 is name, 1 is data
 
-        delimiter_current_index = form_values["import_table_delimiter"]["current_index"]
-        delimiter = form_values["import_table_delimiter"]["items"][delimiter_current_index][1]
+        # delimiter_current_index = form_values["import_table_delimiter"]["current_index"]
+        # delimiter = form_values["import_table_delimiter"]["items"][delimiter_current_index][1]  # index 0 is name, 1 is data
 
-        decimal_separator_current_index = form_values["import_table_decimal_separator"]["current_index"]
-        decimal_separator = form_values["import_table_decimal_separator"]["items"][decimal_separator_current_index][1]
+        # decimal_separator_current_index = form_values["import_table_decimal_separator"]["current_index"]
+        # decimal_separator = form_values["import_table_decimal_separator"]["items"][decimal_separator_current_index][1]  # index 0 is name, 1 is data
+        
+        layout_type = form_values["import_table_layout_type"]
+        delimiter = form_values["import_table_delimiter"]
+        decimal_separator = form_values["import_table_decimal_separator"]
+        
 
         # Do validations
         if decimal_separator == delimiter:
             raise ValueError("Cannot have the same character for delimiter and decimal separator.")
-        elif layout_type == 0 and no_header == 0:
+        elif layout_type == "Headers are frequencies, indexes are names" and no_header == 0:
             raise ValueError("Header line cannot be zero. Since you have selected"
                              " headers as frequencies, there needs to be a line for headers.")
-        elif layout_type == 1 and no_index == 0:
+        elif layout_type == "Indexes are frequencies, headers are names" and no_index == 0:
             raise ValueError("Index column cannot be zero. Since you have selected"
                              " indexes as frequencies, there needs to be a column for indexes.")
         else:
@@ -1893,23 +1900,13 @@ class SettingsDialog(qtw.QDialog):
             if isinstance(widget, qtw.QCheckBox):
                 widget.setChecked(saved_setting)
 
-            elif widget_name == "matplotlib_style":
-                try:
-                    index_from_settings = mpl_styles.index(saved_setting)
-                except IndexError:
-                    index_from_settings = 0
-                widget.setCurrentIndex(index_from_settings)
-
-            elif widget_name == "graph_grids":
-                try:
-                    index_from_settings = [widget.itemData(i) for i in range(
-                        widget.count())].index(settings.graph_grids)
-                except IndexError:
-                    index_from_settings = 0
-                widget.setCurrentIndex(index_from_settings)
+            elif widget_name in ("matplotlib_style", "graph_grids"):
+                if widget.findText(saved_setting) == -1:
+                    widget.setCurrentIndex(0)
+                else:
+                    widget.setCurrentText(saved_setting)
 
             else:
-                # print(widget_name, type(saved_setting), saved_setting)
                 widget.setValue(saved_setting)
 
         # Connections
@@ -1935,10 +1932,8 @@ class SettingsDialog(qtw.QDialog):
         for widget_name, widget in user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update(widget_name, widget.isChecked())
-            elif widget_name == "matplotlib_style":
-                settings.update(widget_name, widget.currentData())
-            elif widget_name == "graph_grids":
-                settings.update(widget_name, widget.currentData())
+            elif widget_name in ("matplotlib_style", "graph_grids"):
+                settings.update(widget_name, widget.currentText())
             else:
                 settings.update(widget_name, widget.value())
         self.signal_settings_changed.emit()
