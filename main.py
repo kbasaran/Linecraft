@@ -665,7 +665,7 @@ class CurveAnalyze(qtw.QMainWindow):
             self.signal_table_import_fail.emit()  # always emit this first so the import dialog knows it didn't work
             raise IndexError(
                 "Check your import settings and if all your rows and columns have the same length in the imported text.")
-        except pd.errors.EmptyDataError as e:
+        except (pd.errors.EmptyDataError, TypeError) as e:
             logger.warning("EmptyDataError: " + str(e))
             self.signal_table_import_fail.emit()
             return
