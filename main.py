@@ -90,7 +90,7 @@ class Settings:
     sum_selected: bool = True
     diff_selected: bool = True
     average_calc_f_start: float = 20
-    average_calc_f_end: float = 20000
+    average_calc_f_end: float = 20_000
     add_gain_value: float = 0
     matplotlib_style: str = "bmh"
     processing_interpolation_ppo: int = 96
@@ -1511,7 +1511,7 @@ class ProcessingDialog(qtw.QDialog):
         # ---- Show best fits
         user_form_4 = pwi.UserForm()
         # tab page is the UserForm widget
-        self.tab_widget.addTab(user_form_4, "Best fit to current")
+        self.tab_widget.addTab(user_form_4, "Best fit")
         i = self.tab_widget.indexOf(user_form_4)
         self.user_forms_and_recipient_functions[i] = (
             user_form_4, "_show_best_fits")
