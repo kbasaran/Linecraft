@@ -1376,9 +1376,9 @@ class ProcessingDialog(qtw.QDialog):
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         self.setWindowTitle("Processing Menu")
         self.setLayout(qtw.QVBoxLayout())
-        self.tab_widget = qtw.QTabWidget(tabPosition=qtw.QTabWidget.TabPosition.East)
+        self.tab_widget = qtw.QTabWidget(tabPosition=qtw.QTabWidget.TabPosition.North)
         text_width = qtg.QFontMetrics(self.font()).averageCharWidth()
-        # self.tab_widget.setMinimumWidth(text_width * 92)
+        self.tab_widget.setMinimumWidth(text_width * 52)
         self.layout().addWidget(self.tab_widget)
         
         class TabTitle(qtw.QLabel):
