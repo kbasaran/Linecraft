@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from difflib import SequenceMatcher
 from dataclasses import dataclass, fields
+from copy import copy, deepcopy
 
 # from matplotlib.backends.qt_compat import QtWidgets as qtw
 from PySide6 import QtWidgets as qtw
@@ -62,47 +63,56 @@ class Settings:
     author: str = app_definitions["author"]
     author_short: str = app_definitions["author_short"]
     version: str = app_definitions["version"]
-    GAMMA: float = 1.401  # adiabatic index of air
-    P0: int = 101325
-    RHO: float = 1.1839  # 25 degrees celcius
-    Kair: float = 101325. * RHO
-    c_air: float = (P0 * GAMMA / RHO)**0.5
-    f_min: int = 10
-    f_max: int = 3000
-    ppo: int = 48 * 8
-    FS: int = 48000
-    A_beep: float = 0.25
+
     last_used_folder: str = str(Path.home())
+
+    A_beep: float = 0.25
     show_legend: bool = True
-    max_legend_size: int = 10
+    max_legend_size: int = 7
     import_ppo: int = 96
     export_ppo: int = 96
+    matplotlib_style: str = "bmh"
+    interpolate_must_contain_hz: int = 1000
+    graph_grids: str = "Major and minor"
+
     processing_selected_tab: int = 0
+
     mean_selected: bool = False
     median_selected: bool = True
-    smoothing_type: int = 0
+
+    smoothing_type: str = "Butterworth 8th, log spaced"
     smoothing_resolution_ppo: int = 96
     smoothing_bandwidth: int = 6
+
     outlier_fence_iqr: float = 10.
-    outlier_action: int = 0
+    outlier_check_start_freq: int = 20
+    outlier_check_end_freq: int = 20_000
+    outlier_action: str = "None"
+
     sum_selected: bool = True
     diff_selected: bool = True
-    matplotlib_style: str = "bmh"
+
+    average_calc_f_start: float = 20
+    average_calc_f_end: float = 20_000
+
+    add_gain_value: float = 0
+
     processing_interpolation_ppo: int = 96
-    interpolate_must_contain_hz: int = 1000
-    graph_grids: str = "default"
+
     best_fit_calculation_resolution_ppo: int = 24
     best_fit_critical_range_start_freq: int = 200
     best_fit_critical_range_end_freq: int = 5000
     best_fit_critical_range_weight: int = 1
+
     import_table_no_line_headers: int = 1
     import_table_no_columns: int = 1
-    import_table_layout_type: int = 0
-    import_table_delimiter: int = 0
-    import_table_decimal_separator: int = 0
+    import_table_layout_type: str = "Headers are frequencies, indexes are names"
+    import_table_delimiter: str = "Tab"
+    import_table_decimal_separator: str = ". (dot)"
 
     def __post_init__(self):
-        settings_storage_title = self.app_name + " - " + (self.version.split(".")[0] if "." in self.version else "")
+        settings_storage_title = self.app_name + " - " + \
+            (self.version.split(".")[0] if "." in self.version else "")
         self.settings_sys = qtc.QSettings(
             self.author_short, settings_storage_title)
         self.read_all_from_registry()
@@ -112,7 +122,7 @@ class Settings:
             return
         elif type(getattr(self, attr_name)) != type(new_val):
             logger.warning(f"Settings.update: Received value type {type(new_val)} does not match the original type {type(getattr(self, attr_name))}"
-                            f"\nValue: {new_val}")
+                           f"\nValue: {new_val}")
 
         setattr(self, attr_name, new_val)
         self.settings_sys.setValue(attr_name, getattr(self, attr_name))
@@ -120,7 +130,7 @@ class Settings:
     def write_all_to_registry(self):
         for field in fields(self):
             value = getattr(self, field.name)
-            
+
             # convert tuples to list for Qt compatibility
             value = list(value) if isinstance(value, tuple) else value
 
@@ -133,7 +143,7 @@ class Settings:
                 value = field.type(value_raw)
             except (TypeError, ValueError):
                 value = field.default
-    
+
             setattr(self, field.name, value)
 
     def as_dict(self):
@@ -201,13 +211,16 @@ class CurveAnalyze(qtw.QMainWindow):
     # ---- Signals to the graph
     # signal_update_figure_request = qtc.Signal(object)  # failed to pass all the args and kwargs
     # in an elegant way
-    signal_update_labels_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
+    # it is in fact a dict but PySide6 has a bug for passing dict
+    signal_update_labels_request = qtc.Signal(object)
     signal_reset_colors_request = qtc.Signal()
     signal_remove_curves_request = qtc.Signal(list)
     # signal_update_visibility_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
-    signal_reposition_curves_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
+    # it is in fact a dict but PySide6 has a bug for passing dict
+    signal_reposition_curves_request = qtc.Signal(object)
     signal_flash_curve_request = qtc.Signal(int)
-    signal_toggle_reference_curve_request = qtc.Signal(object)  # it is a list or a NoneType
+    signal_toggle_reference_curve_request = qtc.Signal(
+        object)  # it is a list or a NoneType
     # signal_add_line_request = qtc.Signal(list, object)  # failed to pass all the args and kwargs
     # in an elegant way
 
@@ -230,18 +243,23 @@ class CurveAnalyze(qtw.QMainWindow):
             self.qlistwidget_for_curves.setCurrentRow(-1)
 
     def _create_core_objects(self):
-        self._interactable_widgets = dict()  # a dictionary of QWidgets that users interact with
-        self.curves = []  # frequency response curves. THIS IS THE SINGLE SOURCE OF TRUTH FOR CURVE DATA.
+        # a dictionary of QWidgets that users interact with
+        self._interactable_widgets = dict()
+        # frequency response curves. THIS IS THE SINGLE SOURCE OF TRUTH FOR CURVE DATA.
+        self.curves = []
 
     def _create_menu_bar(self):
         menu_bar = self.menuBar()
-        
+
         file_menu = menu_bar.addMenu("File")
-        load_action = file_menu.addAction("Load state..", self.pick_a_file_and_load_state_from_it)
-        save_action = file_menu.addAction("Save state..", self.save_state_to_file)
+        load_action = file_menu.addAction(
+            "Load state..", self.pick_a_file_and_load_state_from_it)
+        save_action = file_menu.addAction(
+            "Save state..", self.save_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
-        settings_action = edit_menu.addAction("Settings..", self.open_settings_dialog)
+        settings_action = edit_menu.addAction(
+            "Settings..", self.open_settings_dialog)
 
         help_menu = menu_bar.addMenu("Help")
         about_action = help_menu.addAction("About", self.open_about_menu)
@@ -276,7 +294,8 @@ class CurveAnalyze(qtw.QMainWindow):
 
         # ---- Set types and states for buttons
         self._interactable_widgets["auto_import_pushbutton"].setCheckable(True)
-        self._interactable_widgets["set_reference_pushbutton"].setCheckable(True)
+        self._interactable_widgets["set_reference_pushbutton"].setCheckable(
+            True)
 
         # ---- Create list widget
         self.qlistwidget_for_curves = qtw.QListWidget()
@@ -291,7 +310,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.centralWidget().layout().addWidget(self.graph, 3)
         self.centralWidget().layout().addWidget(self.graph_buttons)
         self.centralWidget().layout().addWidget(self.qlistwidget_for_curves, 1)
-        
+
         # set size policies
         self.graph.setSizePolicy(
             qtw.QSizePolicy.Expanding, qtw.QSizePolicy.MinimumExpanding)
@@ -332,24 +351,31 @@ class CurveAnalyze(qtw.QMainWindow):
 
         # ---- Signals to Matplolib graph
         # self.signal_update_figure_request.connect(self.graph.update_figure)
-        self.signal_reposition_curves_request.connect(self.graph.change_lines_order)
+        self.signal_reposition_curves_request.connect(
+            self.graph.change_lines_order)
         self.signal_flash_curve_request.connect(self.graph.flash_curve)
-        self.signal_update_labels_request.connect(self.graph.update_labels_and_visibilities)
+        self.signal_update_labels_request.connect(
+            self.graph.update_labels_and_visibilities)
         self.signal_user_settings_changed.connect(self.graph.set_grid_type)
         self.signal_reset_colors_request.connect(self.graph.reset_colors)
-        self.signal_remove_curves_request.connect(self.graph.remove_multiple_line2d)
-        self.signal_toggle_reference_curve_request.connect(self.graph.toggle_reference_curve)
+        self.signal_remove_curves_request.connect(
+            self.graph.remove_multiple_line2d)
+        self.signal_toggle_reference_curve_request.connect(
+            self.graph.toggle_reference_curve)
         # self.signal_add_line_request.connect(self.graph.add_line2d)
         # self.signal_update_visibility_request.connect(self.graph.update_labels_and_visibilities)
 
         # ---- Signals from Matplotlib graph
         self.graph.signal_good_beep.connect(self.signal_good_beep)
         self.graph.signal_bad_beep.connect(self.signal_bad_beep)
-        self.graph.signal_is_reference_curve_active.connect(self._interactable_widgets["set_reference_pushbutton"].setChecked)
+        self.graph.signal_is_reference_curve_active.connect(
+            self._interactable_widgets["set_reference_pushbutton"].setChecked)
 
         # Disable some buttons when there is a reference curve active
-        self.graph.signal_is_reference_curve_active.connect(lambda x: self._interactable_widgets["processing_pushbutton"].setEnabled(not x))
-        self.graph.signal_is_reference_curve_active.connect(lambda x: self._interactable_widgets["export_curve_pushbutton"].setEnabled(not x))
+        self.graph.signal_is_reference_curve_active.connect(
+            lambda x: self._interactable_widgets["processing_pushbutton"].setEnabled(not x))
+        self.graph.signal_is_reference_curve_active.connect(
+            lambda x: self._interactable_widgets["export_curve_pushbutton"].setEnabled(not x))
 
         # Import table dialog good/bad beeps
         self.signal_table_import_successful.connect(self.signal_good_beep)
@@ -439,7 +465,8 @@ class CurveAnalyze(qtw.QMainWindow):
             # i_before is the index on the complete curves list
             i_after = i_insert + i_within_selected
             if i_before < i_after:
-                raise IndexError("This function can only move the item higher up in the list.")
+                raise IndexError(
+                    "This function can only move the item higher up in the list.")
 
             # update the self.curves list (single source of truth)
             curve = self.curves.pop(i_before)
@@ -456,9 +483,11 @@ class CurveAnalyze(qtw.QMainWindow):
             self.qlistwidget_for_curves.takeItem(i_before + 1)
 
             # update the changes dictionary to send to the graph
-            new_order_of_qlist_items.insert(i_after, new_order_of_qlist_items.pop(i_before))
+            new_order_of_qlist_items.insert(
+                i_after, new_order_of_qlist_items.pop(i_before))
 
-        new_indexes_of_qlist_items = dict(zip(new_order_of_qlist_items, range(len(self.curves))))
+        new_indexes_of_qlist_items = dict(
+            zip(new_order_of_qlist_items, range(len(self.curves))))
 
         # send the changes dictionary to the graph
         self.signal_reposition_curves_request.emit(new_indexes_of_qlist_items)
@@ -487,9 +516,10 @@ class CurveAnalyze(qtw.QMainWindow):
             for i, curve in enumerate(self.curves):
                 # print(i, curve.get_full_name())
                 curve.set_name_prefix(f"#{i:02d}")
-                self.qlistwidget_for_curves.item(i).setText(curve.get_full_name())
+                self.qlistwidget_for_curves.item(
+                    i).setText(curve.get_full_name())
                 new_labels[i] = (curve.get_full_name(), curve.is_visible())
-                        
+
             self.signal_update_labels_request.emit(new_labels)
 
     def reset_colors_of_curves(self):
@@ -592,7 +622,8 @@ class CurveAnalyze(qtw.QMainWindow):
     def _import_table_clicked(self):
         import_table_dialog = ImportDialog(parent=self)
 
-        import_table_dialog.signal_import_table_request.connect(self._import_table_requested)
+        import_table_dialog.signal_import_table_request.connect(
+            self._import_table_requested)
         self.signal_table_import_busy.connect(import_table_dialog.deactivate)
 
         self.signal_table_import_successful.connect(import_table_dialog.reject)
@@ -608,9 +639,9 @@ class CurveAnalyze(qtw.QMainWindow):
         logger.debug("Settings:" + str(settings))
         if source == "file":
             file_raw = qtw.QFileDialog.getOpenFileName(self, caption='Open CSV formatted file..',
-                                                   dir=settings.last_used_folder,
-                                                   filter='CSV format (*.txt *.csv)',
-                                                   )[0]
+                                                       dir=settings.last_used_folder,
+                                                       filter='CSV format (*.txt *.csv)',
+                                                       )[0]
 
             if file_raw and (file := Path(file_raw)).is_file():
                 settings.update("last_used_folder", file.parent)
@@ -643,7 +674,7 @@ class CurveAnalyze(qtw.QMainWindow):
              f"\nskiprows: {skiprows}"
              f"\nheader: {header}"
              f"\nindex_col: {index_col}")
-            )
+        )
 
         try:
             df = pd.read_csv(import_file,
@@ -658,10 +689,11 @@ class CurveAnalyze(qtw.QMainWindow):
                              )
         except IndexError as e:
             logger.warning("IndexError: " + str(e))
-            self.signal_table_import_fail.emit()  # always emit this first so the import dialog knows it didn't work
+            # always emit this first so the import dialog knows it didn't work
+            self.signal_table_import_fail.emit()
             raise IndexError(
                 "Check your import settings and if all your rows and columns have the same length in the imported text.")
-        except pd.errors.EmptyDataError as e:
+        except (pd.errors.EmptyDataError, TypeError) as e:
             logger.warning("EmptyDataError: " + str(e))
             self.signal_table_import_fail.emit()
             return
@@ -669,20 +701,22 @@ class CurveAnalyze(qtw.QMainWindow):
         logger.debug(
             (f"Imported column names: {df.columns}"
              f"\nImported index names: {df.index}"
-            f"\nWhole:\n{df}\n"
-            )
-            )
+             f"\nWhole:\n{df}\n"
+             )
+        )
 
         # ---- transpose if frequencies are in indexes
-        if import_settings["layout_type"] == 1:
+        if import_settings["layout_type"] == "Indexes are frequencies, headers are names":
             df = df.transpose()
 
         # ---- validate curve and header validity
         try:
-            signal_tools.check_if_sorted_and_valid(tuple(df.columns))  # checking headers
+            signal_tools.check_if_sorted_and_valid(
+                tuple(df.columns))  # checking headers
             df.columns = df.columns.astype(float)
         except ValueError as e:
-            logger.warning("Failed to validate curve: " + str(e) + "\n" + str(df))
+            logger.warning("Failed to validate curve: " +
+                           str(e) + "\n" + str(df))
             self.signal_table_import_fail.emit()
             return
 
@@ -691,22 +725,24 @@ class CurveAnalyze(qtw.QMainWindow):
             logger.warning("Import does not have any curves to put on graph.")
             self.signal_table_import_fail.emit()
             return
-    
+
         # ---- validate datatype
         try:
             df = df.astype(float)
         except ValueError as e:
             logger.warning("Cannot convert table values to float: " + str(e))
             self.signal_table_import_fail.emit()
-            raise ValueError("Your dataset contains values that could not be interpreted as numbers.")
+            raise ValueError(
+                "Your dataset contains values that could not be interpreted as numbers.")
 
         logger.info(df.info)
 
         # ---- put on the graph
         for name, values in df.iterrows():
-            logger.debug(f"Attempting to add xy data of index {name} as curve.")
+            logger.debug(f"Attempting to add xy data of index {
+                         name} as curve.")
             curve = signal_tools.Curve((df.columns, values))
-            
+
             if settings.import_ppo > 0:
                 x, y = curve.get_xy()
                 x_intp, y_intp = signal_tools.interpolate_to_ppo(
@@ -715,11 +751,12 @@ class CurveAnalyze(qtw.QMainWindow):
                     settings.interpolate_must_contain_hz,
                 )
                 curve.set_xy((x_intp, y_intp))
-            
+
             curve.set_name_base(name)
             _ = self._add_single_curve(None, curve, update_figure=False)
 
-        logger.info(f"Import of curves finished in {(time.perf_counter()-start_time)*1000:.4g}ms")
+        logger.info(f"Import of curves finished in {
+                    (time.perf_counter()-start_time)*1000:.4g}ms")
         self.graph.update_figure()
         self.signal_table_import_successful.emit()
 
@@ -758,7 +795,8 @@ class CurveAnalyze(qtw.QMainWindow):
 
             else:
                 # multiple selections
-                self._interactable_widgets["set_reference_pushbutton"].setChecked(False)
+                self._interactable_widgets["set_reference_pushbutton"].setChecked(
+                    False)
                 self.signal_bad_beep.emit()
 
         elif not checked:
@@ -873,14 +911,16 @@ class CurveAnalyze(qtw.QMainWindow):
         else:
             visibility_states = {i: (None, curve.is_visible())
                                  for i, curve in indexes_and_curves.items()}
-        self.graph.update_labels_and_visibilities(visibility_states, update_figure=update_figure)
+        self.graph.update_labels_and_visibilities(
+            visibility_states, update_figure=update_figure)
 
     def open_processing_dialog(self):
         if self.return_false_and_beep_if_no_curve_selected():
             return
 
         processing_dialog = ProcessingDialog(parent=self)
-        processing_dialog.signal_processing_request.connect(self._processing_dialog_return)
+        processing_dialog.signal_processing_request.connect(
+            self._processing_dialog_return)
         processing_dialog.exec()
 
     def _processing_dialog_return(self, processing_function_name):
@@ -899,15 +939,18 @@ class CurveAnalyze(qtw.QMainWindow):
                     _ = self._add_single_curve(
                         i_to_insert, curve, update_figure=False, line2d_kwargs=results["line2d_kwargs"])
                 else:
-                    raise TypeError(f"Invalid data type to insert: {type(curves)}")
+                    raise TypeError(
+                        f"Invalid data type to insert: {type(curves)}")
 
             self.graph.update_figure()
             to_beep = True
 
         if "result_text" in results.keys():
-            result_text_box = pwi.ResultTextBox(results["title"], results["result_text"], parent=self)
-            text_width = qtg.QFontMetrics(result_text_box.font()).averageCharWidth()
-            result_text_box.setMinimumWidth(text_width * 92)
+            result_text_box = pwi.ResultTextBox(
+                results["title"], results["result_text"], parent=self)
+            text_width = qtg.QFontMetrics(
+                result_text_box.font()).averageCharWidth()
+            result_text_box.setMinimumWidth(text_width * 144)
             result_text_box.show()
             to_beep = True
 
@@ -920,9 +963,9 @@ class CurveAnalyze(qtw.QMainWindow):
         if length_curves != 2:
             raise RuntimeError(
                 "Summation operations can be done only when two curves are selected.")
-        
+
         curves_sum, curves_diff = signal_tools.curve_summation(selected_curves)
-        
+
         representative_base_name = find_longest_match_in_name(
             [curve.get_base_name_and_suffixes() for curve in selected_curves]
         )
@@ -940,6 +983,54 @@ class CurveAnalyze(qtw.QMainWindow):
             result_curves.append(curves_diff)
 
         line2d_kwargs = {"color": "r", "linestyle": "--"}
+
+        return {"to_insert": {0: result_curves}, "line2d_kwargs": line2d_kwargs}
+
+    def _calculate_sensitivity(self):
+        selected_curves = self.get_selected_curves()
+        length_curves = len(selected_curves)
+        if length_curves < 1:
+            raise RuntimeError(
+                "No curves selected.")
+
+        f_min, f_max = settings.average_calc_f_start, settings.average_calc_f_end
+        average_value = {curve.get_full_name(): signal_tools.calculate_average(curve, f_min, f_max)
+                         for curve in selected_curves}
+
+        # Build into dataframe
+        df = pd.DataFrame.from_dict(average_value,
+                                    orient='index',
+                                    columns=["Average values"],
+                                    dtype=float,
+                                    )
+
+        # ---- Generate screen text
+        result_text = "-- Average value for selected curves --"
+        result_text = f"Start frequency: {settings.average_calc_f_start:.5g} Hz      End frequency: {
+            settings.average_calc_f_end:.5g} Hz"
+        result_text += "\n\n"
+        result_text += tabulate(df[["Average values"]],
+                                headers=("Item name", "Average"), floatfmt=(".2f"))
+
+        return {"title": "Average values", "result_text": result_text}
+
+    def _add_gain(self):
+        selected_curves = self.get_selected_curves()
+        length_curves = len(selected_curves)
+        gain_value = settings.add_gain_value
+        if length_curves < 1:
+            raise RuntimeError(
+                "No curves selected.")
+
+        result_curves = [deepcopy(curve) for curve in selected_curves]
+        for new_curve in result_curves:
+            new_curve.set_xy(
+                (new_curve.get_x(), new_curve.get_y() + gain_value))
+            desc_text = f"subtracted {
+                -gain_value:.2f}dB" if gain_value < 0 else f"added {gain_value:.2f}dB"
+            new_curve.add_name_suffix(desc_text)
+
+        line2d_kwargs = {"color": "k", "linestyle": "-"}
 
         return {"to_insert": {0: result_curves}, "line2d_kwargs": line2d_kwargs}
 
@@ -984,24 +1075,29 @@ class CurveAnalyze(qtw.QMainWindow):
         curve_median, lower_fence, upper_fence, outlier_indexes = signal_tools.iqr_analysis(
             {i: curve.get_xy() for i, curve in selected_curves.items()},
             settings.outlier_fence_iqr,
-        )        
+            f_min=settings.outlier_check_start_freq,
+            f_max=settings.outlier_check_end_freq
+        )
         result_curves = curve_median, lower_fence, upper_fence
 
         representative_base_name = find_longest_match_in_name(
-            [curve.get_base_name_and_suffixes() for curve in selected_curves.values()]
+            [curve.get_base_name_and_suffixes()
+             for curve in selected_curves.values()]
         )
 
         for curve in result_curves:
             curve.set_name_base(representative_base_name)
         curve_median.add_name_suffix(f"median, {length_curves} curves")
-        lower_fence.add_name_suffix(f"-{settings.outlier_fence_iqr:.1f}xIQR, {length_curves} curves")
-        upper_fence.add_name_suffix(f"+{settings.outlier_fence_iqr:.1f}xIQR, {length_curves} curves")
+        lower_fence.add_name_suffix(
+            f"-{settings.outlier_fence_iqr:.1f}xIQR, {length_curves} curves")
+        upper_fence.add_name_suffix(
+            f"+{settings.outlier_fence_iqr:.1f}xIQR, {length_curves} curves")
 
-        if settings.outlier_action == 1 and outlier_indexes:  # Hide
+        if settings.outlier_action == "Hide" and outlier_indexes:
             self.hide_curves(indexes=outlier_indexes)
             for curve in result_curves:
                 curve.add_name_suffix("calculated before hiding outliers")
-        elif settings.outlier_action == 2 and outlier_indexes:  # Remove
+        elif settings.outlier_action == "Remove" and outlier_indexes:
             self.remove_curves(indexes=outlier_indexes)
             for curve in result_curves:
                 curve.add_name_suffix("calculated before removing outliers")
@@ -1028,19 +1124,20 @@ class CurveAnalyze(qtw.QMainWindow):
                 *ref_curve.get_xy(),
                 settings.best_fit_calculation_resolution_ppo,
                 settings.interpolate_must_contain_hz,
-                )
+            )
 
             # ---- Calculate residuals squared
             residuals_squared = {curve.get_full_name():
-                                (np.interp(np.log(ref_freqs), np.log(curve.get_x()), curve.get_y(),
-                                 left=np.nan, right=np.nan) - ref_curve_interpolated)**2
-                                for curve in self.curves}
+                                 (np.interp(np.log(ref_freqs), np.log(curve.get_x()), curve.get_y(),
+                                            left=np.nan, right=np.nan) - ref_curve_interpolated)**2
+                                 for curve in self.curves}
 
             df = pd.DataFrame.from_dict(residuals_squared,
                                         orient='index',
                                         columns=ref_freqs,
                                         dtype=float,
-                                        )  # residuals squared. table is per frequency, per speaker.
+                                        # residuals squared. table is per frequency, per speaker.
+                                        )
 
             # ---- Apply weighting to residuals_squared
             critical_columns = [column for column in df.columns if column >=
@@ -1050,22 +1147,28 @@ class CurveAnalyze(qtw.QMainWindow):
                                        (settings.best_fit_critical_range_weight - 1)) / len(df.columns)
                 weighing_critical = settings.best_fit_critical_range_weight / weighing_normalizer
                 df[critical_columns].apply(lambda x: x * weighing_critical)
-                df = df / weighing_normalizer  # residuals squared, weighted. table is per frequency, per speaker.
+                # residuals squared, weighted. table is per frequency, per speaker.
+                df = df / weighing_normalizer
 
             else:
                 logger.warning(
                     "Critical frequency range does not contain any of the frequency points used in best fit")
 
             # --- Calculate standard deviation of weighted residuals
-            df.loc[:, "Unbiased variance of weighted residuals"] = df.sum(axis=1, skipna=True) / (len(df.columns) - 1)
-            df.loc[:, "Standard deviation of weighted residuals"] = df.loc[:, "Unbiased variance of weighted residuals"]**0.5
-            df.sort_values(by=["Standard deviation of weighted residuals"], ascending=True, inplace=True)
+            df.loc[:, "Unbiased variance of weighted residuals"] = df.sum(
+                axis=1, skipna=True) / (len(df.columns) - 1)
+            df.loc[:, "Standard deviation of weighted residuals"] = df.loc[:,
+                                                                           "Unbiased variance of weighted residuals"]**0.5
+            df.sort_values(
+                by=["Standard deviation of weighted residuals"], ascending=True, inplace=True)
 
             # ---- Generate screen text
             result_text = "-- Standard deviation of weighted residual error (Swr) --"
-            result_text += f"\nReference: {ref_curve.get_name_prefix()}    Amount of frequency points: {len(ref_freqs)}"
+            result_text += f"\nReference: {ref_curve.get_name_prefix(
+            )}    Amount of frequency points: {len(ref_freqs)}"
             result_text += "\n\n"
-            result_text += tabulate(df[["Standard deviation of weighted residuals"]], headers=("Item name", "Swr"))
+            result_text += tabulate(
+                df[["Standard deviation of weighted residuals"]], headers=("Item name", "Swr"))
 
         return {"title": "Best fits", "result_text": result_text}
 
@@ -1079,7 +1182,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 *curve.get_xy(),
                 settings.processing_interpolation_ppo,
                 settings.interpolate_must_contain_hz,
-                )
+            )
 
             new_curve = signal_tools.Curve(xy)
             new_curve.set_name_base(curve.get_name_base())
@@ -1100,26 +1203,26 @@ class CurveAnalyze(qtw.QMainWindow):
 
         for i_curve, curve in selected_curves.items():
 
-            if settings.smoothing_type == 0:
+            if settings.smoothing_type == "Butterworth 8th, log spaced":
                 xy = signal_tools.smooth_log_spaced_curve_butterworth_fast(*curve.get_xy(),
                                                                            bandwidth=settings.smoothing_bandwidth,
                                                                            resolution=settings.smoothing_resolution_ppo,
                                                                            order=8,
                                                                            )
 
-            elif settings.smoothing_type == 1:
+            elif settings.smoothing_type == "Butterworth 4th, log spaced":
                 xy = signal_tools.smooth_log_spaced_curve_butterworth_fast(*curve.get_xy(),
                                                                            bandwidth=settings.smoothing_bandwidth,
                                                                            resolution=settings.smoothing_resolution_ppo,
                                                                            order=4,
                                                                            )
 
-            elif settings.smoothing_type == 2:
+            elif settings.smoothing_type == "Rectangular, w/o interpolation":
                 xy = signal_tools.smooth_curve_rectangular_no_interpolation(*curve.get_xy(),
                                                                             bandwidth=settings.smoothing_bandwidth,
                                                                             )
 
-            elif settings.smoothing_type == 3:
+            elif settings.smoothing_type == "Gaussian, log spaced":
                 xy = signal_tools.smooth_curve_gaussian(*curve.get_xy(),
                                                         bandwidth=settings.smoothing_bandwidth,
                                                         resolution=settings.smoothing_resolution_ppo,
@@ -1230,7 +1333,8 @@ class CurveAnalyze(qtw.QMainWindow):
             lines_info.append(collect_line2d_info(line))
             curves_info.append(collect_curve_info(curve))
 
-        package = pickle.dumps((graph_info, lines_info, curves_info), protocol=5)
+        package = pickle.dumps(
+            (graph_info, lines_info, curves_info), protocol=5)
         return package
 
     def set_widget_state(self, package):
@@ -1239,7 +1343,7 @@ class CurveAnalyze(qtw.QMainWindow):
         # ---- delete all lines first
         # self.remove_curves([*range(len(self.curves))])
 
-        if not self.curves:
+        if len(self.curves) == 0:
             # ---- apply graph state
             ax = self.graph.ax
             ax.set_title(graph_info["title"])
@@ -1257,7 +1361,8 @@ class CurveAnalyze(qtw.QMainWindow):
             curve.set_visible(curve_info["visible"])
             curve._identification = curve_info["identification"]
 
-            self._add_single_curve(None, curve, update_figure=False, line2d_kwargs=line_info)
+            self._add_single_curve(
+                None, curve, update_figure=False, line2d_kwargs=line_info)
 
         self.update_visibilities_of_graph_curves(update_figure=False)
         self.graph.update_figure(recalculate_limits=False)
@@ -1276,7 +1381,8 @@ class CurveAnalyze(qtw.QMainWindow):
             if file_raw:  # if we received a string
                 # Filter not working as expected in nautilus. Saves files without including the extension.
                 # Therefore added this seciton.
-                file = Path(file_raw + ".lc" if file_raw[-3:] != ".lc" else file_raw)
+                file = Path(
+                    file_raw + ".lc" if file_raw[-3:] != ".lc" else file_raw)
                 assert file.parent.is_dir()
             else:
                 return  # nothing was selected, pick file canceled
@@ -1295,19 +1401,23 @@ class CurveAnalyze(qtw.QMainWindow):
                                                filter='Linecraft files (*.lc)',
                                                )[0]
         if file:
-            self.load_state_from_file(Path(file))
+            self.load_state_from_file(file)
         else:
             pass  # canceled file select
 
-    def load_state_from_file(self, file: Path):
+    def load_state_from_file(self, file: (str, Path)):
 
-        if not isinstance(file, Path):
-            raise TypeError("Input type must be 'pathlib.Path'")
-        if not file.is_file():
+        try:
+            my_file = Path(file)
+        except TypeError as e:
+            raise TypeError(f"Unable to convert argument '{
+                            file}' into a file path. Error: {e}")
+
+        if not my_file.is_file():
             raise FileNotFoundError(file)
 
-        settings.update("last_used_folder", str(file.parent))
-        with open(file, "rb") as f:
+        settings.update("last_used_folder", str(my_file.parent))
+        with open(my_file, "rb") as f:
             self.set_widget_state(f.read())
         self.signal_good_beep.emit()
 
@@ -1320,12 +1430,19 @@ class ProcessingDialog(qtw.QDialog):
         super().__init__(parent=parent)
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         self.setWindowTitle("Processing Menu")
-        layout = qtw.QVBoxLayout(self)
-        self.tab_widget = qtw.QTabWidget()
+        self.setLayout(qtw.QVBoxLayout())
+        self.tab_widget = qtw.QTabWidget(
+            tabPosition=qtw.QTabWidget.TabPosition.North)
         text_width = qtg.QFontMetrics(self.font()).averageCharWidth()
-        self.tab_widget.setMinimumWidth(text_width * 92)
-        # self.tab_widget.setSizePolicy(qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Preferred)
-        layout.addWidget(self.tab_widget)
+        # self.tab_widget.setMinimumWidth(text_width * 36)
+        self.layout().addWidget(self.tab_widget)
+
+        class TabTitle(qtw.QLabel):
+            def __init__(self, text: str):
+                super().__init__()
+                self.setText(text)
+                self.setStyleSheet("font-weight: bold")
+                self.setAlignment(qtg.Qt.AlignmentFlag.AlignLeft)
 
         # dict of tuples. key is index of tab. value is a tuple(UserForm, processing_function_name)
         self.user_forms_and_recipient_functions = {}
@@ -1338,7 +1455,10 @@ class ProcessingDialog(qtw.QDialog):
         self.user_forms_and_recipient_functions[i] = (
             user_form_0, "_mean_and_median_analysis")
 
-       # ---- Statistics page
+        user_form_0.add_row(TabTitle("Statistics"))
+        user_form_0.add_row(qtw.QLabel(
+            "Select multiple curves before proceeding."))
+
         user_form_0.add_row(pwi.CheckBox("mean_selected",
                                          "Returns a curve showing the mean value of level in dB."
                                          "Preferred method of estimating representtive curve when sample population is small and symmetrically distributed.",
@@ -1360,6 +1480,8 @@ class ProcessingDialog(qtw.QDialog):
         i = self.tab_widget.indexOf(user_form_1)
         self.user_forms_and_recipient_functions[i] = (
             user_form_1, "_smoothen_curves")
+
+        user_form_1.add_row(TabTitle("Smoothing"))
 
         user_form_1.add_row(pwi.ComboBox("smoothing_type",
                                          None,
@@ -1388,13 +1510,11 @@ class ProcessingDialog(qtw.QDialog):
                             "Bandwidth (1/octave)",
                             )
 
-        def set_availability_of_resolution_option(smoothing_type_index):
-            available = True if smoothing_type_index in (0, 1, 3) else False
-            user_form_1.interactable_widgets["smoothing_resolution_ppo"].setEnabled(
-                available)
-
+        # Disable the resolution spin box if smoothing type is rectangular.
         user_form_1.interactable_widgets["smoothing_type"].currentIndexChanged.connect(
-            set_availability_of_resolution_option)
+            lambda x: user_form_1.interactable_widgets["smoothing_resolution_ppo"].setEnabled(
+                x != 2)
+        )
 
         # ---- Outlier detection page
         user_form_2 = pwi.UserForm()
@@ -1404,12 +1524,25 @@ class ProcessingDialog(qtw.QDialog):
         self.user_forms_and_recipient_functions[i] = (
             user_form_2, "_outlier_detection")
 
+        user_form_2.add_row(TabTitle("Outlier Detection"))
+
         user_form_2.add_row(pwi.FloatSpinBox("outlier_fence_iqr",
-                                             "Fence post for outlier detection using IQR method. Unit is the interquartile range of the data points for given frequency.",
+                                             "Fence post for outlier detection using IQR method. Unit is the interquartile range for given frequency."
+                                             "Often the value 1.5 is used.",
                                              decimals=1,
-                                             min_max=(1, 99999),
+                                             min_max=(0.1, 999.9),
                                              ),
                             "Outlier fence (IQR)",
+                            )
+
+        user_form_2.add_row(pwi.IntSpinBox("outlier_check_start_freq",
+                                           "Lowest frequency to include for outlier calculation."),
+                            "Lowest frequency (Hz)",
+                            )
+
+        user_form_2.add_row(pwi.IntSpinBox("outlier_check_end_freq",
+                                           "Highest frequency to include for outlier calculation."),
+                            "Highest frequency (Hz)",
                             )
 
         user_form_2.add_row(pwi.ComboBox("outlier_action",
@@ -1430,6 +1563,9 @@ class ProcessingDialog(qtw.QDialog):
         self.user_forms_and_recipient_functions[i] = (
             user_form_3, "_interpolate_curves")
 
+        user_form_3.add_row(TabTitle("Interpolation"))
+        user_form_3.add_row(qtw.QLabel(
+            "Interpolate selected curves to new octavely spaced points."))
         user_form_3.add_row(pwi.IntSpinBox("processing_interpolation_ppo",
                                            None,
                                            min_max=(1, 99999),
@@ -1440,10 +1576,14 @@ class ProcessingDialog(qtw.QDialog):
         # ---- Show best fits
         user_form_4 = pwi.UserForm()
         # tab page is the UserForm widget
-        self.tab_widget.addTab(user_form_4, "Best fit to current")
+        self.tab_widget.addTab(user_form_4, "Best fit")
         i = self.tab_widget.indexOf(user_form_4)
         self.user_forms_and_recipient_functions[i] = (
             user_form_4, "_show_best_fits")
+
+        user_form_4.add_row(TabTitle("Best fit to current"))
+        user_form_4.add_row(qtw.QLabel(
+            "Find the best fit to the selected curve."))
 
         user_form_4.add_row(pwi.IntSpinBox("best_fit_calculation_resolution_ppo",
                                            "How many calculation points per octave to use for the calculation"
@@ -1467,7 +1607,7 @@ class ProcessingDialog(qtw.QDialog):
                                            "Setting to 0 means the range will not be considered in the calculation"),
                             "Critical range weight",
                             )
-        
+
         # ---- Summation page
         user_form_5 = pwi.UserForm()
         # tab page is the UserForm widget
@@ -1475,7 +1615,11 @@ class ProcessingDialog(qtw.QDialog):
         i = self.tab_widget.indexOf(user_form_5)
         self.user_forms_and_recipient_functions[i] = (
             user_form_5, "_curve_summation")
-        user_form_5.add_row(qtw.QLabel("Make sure you selected only two curves before continuing."))
+
+        user_form_5.add_row(TabTitle("Summation"))
+        user_form_5.add_row(qtw.QLabel(
+            "Calculate the sum of or the difference between two selected curves."))
+
         user_form_5.add_row(pwi.CheckBox("sum_selected",
                                          "Returns the sum of the curves. Curves will be interpolated to all the frequency points provided in either of the curves."
                                          ),
@@ -1489,6 +1633,49 @@ class ProcessingDialog(qtw.QDialog):
                             "Difference",
                             )
 
+        # ---- Sensitivity page
+        user_form_6 = pwi.UserForm()
+        # tab page is the UserForm widget
+        self.tab_widget.addTab(user_form_6, "Average value")
+        i = self.tab_widget.indexOf(user_form_6)
+        self.user_forms_and_recipient_functions[i] = (
+            user_form_6, "_calculate_sensitivity")
+
+        user_form_6.add_row(TabTitle("Average value (sensitivity)"))
+        user_form_6.add_row(qtw.QLabel(
+            "Calculate average value in given frequency range."))
+
+        user_form_6.add_row(pwi.FloatSpinBox("average_calc_f_start",
+                                             "Starting frequency for average value calculation.",
+                                             decimals=1,
+                                             ),
+                            "Start frequency (Hz)",
+                            )
+        user_form_6.add_row(pwi.FloatSpinBox("average_calc_f_end",
+                                             "End frequency for average value calculation.",
+                                             decimals=1,
+                                             ),
+                            "End frequency (Hz)",
+                            )
+
+        # ---- Gain page
+        user_form_7 = pwi.UserForm()
+        # tab page is the UserForm widget
+        self.tab_widget.addTab(user_form_7, "Gain")
+        i = self.tab_widget.indexOf(user_form_7)
+        self.user_forms_and_recipient_functions[i] = (
+            user_form_7, "_add_gain")
+
+        user_form_7.add_row(TabTitle("Gain"))
+        user_form_7.add_row(qtw.QLabel(
+            "Shift selected curves by this value in y axis."))
+
+        user_form_7.add_row(pwi.FloatSpinBox("add_gain_value",
+                                             "Shift the curve by this value.",
+                                             min_max=(-999.99, 999.99),
+                                             ),
+                            "Value")
+
         # ---- Common buttons for the dialog
         button_group = pwi.PushButtonGroup({"run": "Run",
                                             "cancel": "Cancel",
@@ -1496,7 +1683,7 @@ class ProcessingDialog(qtw.QDialog):
                                            {},
                                            )
         button_group.buttons()["run_pushbutton"].setDefault(True)
-        layout.addWidget(button_group)
+        self.layout().addWidget(button_group)
 
         # ---- Update parameters from settings
         self.tab_widget.setCurrentIndex(settings.processing_selected_tab)
@@ -1507,7 +1694,7 @@ class ProcessingDialog(qtw.QDialog):
                 if isinstance(widget, qtw.QCheckBox):
                     widget.setChecked(saved_setting)
                 elif isinstance(widget, qtw.QComboBox):
-                    widget.setCurrentIndex(saved_setting)
+                    widget.setCurrentText(saved_setting)
                 else:
                     widget.setValue(saved_setting)
 
@@ -1522,13 +1709,13 @@ class ProcessingDialog(qtw.QDialog):
         user_form, processing_function_name = self.user_forms_and_recipient_functions[
             active_tab_index]
         settings.update("processing_selected_tab",
-                             self.tab_widget.currentIndex())
+                        self.tab_widget.currentIndex())
 
         for key, widget in user_form.interactable_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update(key, widget.isChecked())
             elif isinstance(widget, qtw.QComboBox):
-                settings.update(key, widget.currentIndex())
+                settings.update(key, widget.currentText())
             else:
                 settings.update(key, widget.value())
 
@@ -1546,12 +1733,12 @@ class ImportDialog(qtw.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         # self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
-        layout = qtw.QVBoxLayout(self)
+        self.setLayout(qtw.QVBoxLayout())
         self.setWindowTitle("Import table with curve(s)")
 
         # ---- Form
         user_form = pwi.UserForm()
-        layout.addWidget(user_form)
+        self.layout().addWidget(user_form)
 
         user_form.add_row(pwi.ComboBox("import_table_layout_type",
                                        "Choose how the data is laid out in the raw imported data.",
@@ -1606,13 +1793,13 @@ class ImportDialog(qtw.QDialog):
                                            {},
                                            )
         button_group.buttons()["open_file_pushbutton"].setDefault(True)
-        layout.addWidget(button_group)
+        self.layout().addWidget(button_group)
 
         # read values from settings
         values_new = {}
         for key, widget in user_form.interactable_widgets.items():
             if isinstance(widget, qtw.QComboBox):
-                values_new[key] = {"current_index": getattr(settings, key)}
+                values_new[key] = {"current_text": getattr(settings, key)}
             else:
                 values_new[key] = getattr(settings, key)
         user_form.update_form_values(values_new)
@@ -1627,8 +1814,8 @@ class ImportDialog(qtw.QDialog):
     def _save_form_values_to_settings(self, user_form: pwi.UserForm):
         values = user_form.get_form_values()
         for widget_name, value in values.items():
-            if isinstance(value, dict) and "current_index" in value.keys():
-                settings.update(widget_name, value["current_index"])
+            if isinstance(value, dict) and "current_text" in value.keys():  # if a qcombobox
+                settings.update(widget_name, value["current_text"])
             else:
                 settings.update(widget_name, value)
 
@@ -1650,23 +1837,18 @@ class ImportDialog(qtw.QDialog):
 
         no_header = form_values["import_table_no_line_headers"]
         no_index = form_values["import_table_no_columns"]
-
-        layout_type_current_index = form_values["import_table_layout_type"]["current_index"]
-        layout_type = form_values["import_table_layout_type"]["items"][layout_type_current_index][1]
-
-        delimiter_current_index = form_values["import_table_delimiter"]["current_index"]
-        delimiter = form_values["import_table_delimiter"]["items"][delimiter_current_index][1]
-
-        decimal_separator_current_index = form_values["import_table_decimal_separator"]["current_index"]
-        decimal_separator = form_values["import_table_decimal_separator"]["items"][decimal_separator_current_index][1]
+        layout_type = form_values["import_table_layout_type"]
+        delimiter = form_values["import_table_delimiter"]
+        decimal_separator = form_values["import_table_decimal_separator"]
 
         # Do validations
         if decimal_separator == delimiter:
-            raise ValueError("Cannot have the same character for delimiter and decimal separator.")
-        elif layout_type == 0 and no_header == 0:
+            raise ValueError(
+                "Cannot have the same character for delimiter and decimal separator.")
+        elif layout_type == "Headers are frequencies, indexes are names" and no_header == 0:
             raise ValueError("Header line cannot be zero. Since you have selected"
                              " headers as frequencies, there needs to be a line for headers.")
-        elif layout_type == 1 and no_index == 0:
+        elif layout_type == "Indexes are frequencies, headers are names" and no_index == 0:
             raise ValueError("Index column cannot be zero. Since you have selected"
                              " indexes as frequencies, there needs to be a column for indexes.")
         else:
@@ -1690,11 +1872,11 @@ class SettingsDialog(qtw.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
-        layout = qtw.QVBoxLayout(self)
+        self.setLayout(qtw.QVBoxLayout())
 
         # ---- Form
         user_form = pwi.UserForm()
-        layout.addWidget(user_form)
+        self.layout().addWidget(user_form)
 
         user_form.add_row(pwi.CheckBox("show_legend", "Show legend on the graph"),
                           "Show legend")
@@ -1745,7 +1927,7 @@ class SettingsDialog(qtw.QDialog):
         user_form.add_row(pwi.IntSpinBox("interpolate_must_contain_hz",
                                          "Frequency that will always be a point within interpolated frequency array."
                                          "\nDefault value: 1000",
-                                         min_max = (1, 999999),
+                                         min_max=(1, 999999),
                                          ),
                           "Interpolate must contain frequency (Hz)",
                           )
@@ -1766,7 +1948,7 @@ class SettingsDialog(qtw.QDialog):
                                            {},
                                            )
         button_group.buttons()["save_pushbutton"].setDefault(True)
-        layout.addWidget(button_group)
+        self.layout().addWidget(button_group)
 
         # ---- read values from settings
         for widget_name, widget in user_form.interactable_widgets.items():
@@ -1774,23 +1956,13 @@ class SettingsDialog(qtw.QDialog):
             if isinstance(widget, qtw.QCheckBox):
                 widget.setChecked(saved_setting)
 
-            elif widget_name == "matplotlib_style":
-                try:
-                    index_from_settings = mpl_styles.index(saved_setting)
-                except IndexError:
-                    index_from_settings = 0
-                widget.setCurrentIndex(index_from_settings)
-
-            elif widget_name == "graph_grids":
-                try:
-                    index_from_settings = [widget.itemData(i) for i in range(
-                        widget.count())].index(settings.graph_grids)
-                except IndexError:
-                    index_from_settings = 0
-                widget.setCurrentIndex(index_from_settings)
+            elif widget_name in ("matplotlib_style", "graph_grids"):
+                if widget.findText(saved_setting) == -1:
+                    widget.setCurrentIndex(0)
+                else:
+                    widget.setCurrentText(saved_setting)
 
             else:
-                # print(widget_name, type(saved_setting), saved_setting)
                 widget.setValue(saved_setting)
 
         # Connections
@@ -1816,10 +1988,8 @@ class SettingsDialog(qtw.QDialog):
         for widget_name, widget in user_input_widgets.items():
             if isinstance(widget, qtw.QCheckBox):
                 settings.update(widget_name, widget.isChecked())
-            elif widget_name == "matplotlib_style":
-                settings.update(widget_name, widget.currentData())
-            elif widget_name == "graph_grids":
-                settings.update(widget_name, widget.currentData())
+            elif widget_name in ("matplotlib_style", "graph_grids"):
+                settings.update(widget_name, widget.currentText())
             else:
                 settings.update(widget_name, widget.value())
         self.signal_settings_changed.emit()
@@ -1863,7 +2033,8 @@ def parse_args(app_definitions):
     parser.add_argument('infile', nargs="?", type=Path,
                         help="Path to a '*.lc' file. This will open a saved state.")
     parser.add_argument('-d', '--loglevel', nargs="?",
-                        choices=["debug", "info", "warning", "error", "critical"],
+                        choices=["debug", "info",
+                                 "warning", "error", "critical"],
                         help="Set logging level for Python logging. Valid values are debug, info, warning, error and critical.")
 
     return parser.parse_args()
@@ -1882,18 +2053,19 @@ def create_sound_engine(app):
     return sound_engine, sound_engine_thread
 
 
-def setup_logging(level: str="warning", args=None):
+def setup_logging(level: str = "warning", args=None):
     if args and args.loglevel:
         log_level = getattr(logging, args.loglevel.upper())
     else:
         log_level = level.upper()
-        
-    log_filename = Path.home().joinpath(f".{app_definitions['app_name'].lower()}.log")
-    
+
+    log_filename = Path.home().joinpath(
+        f".{app_definitions['app_name'].lower()}.log")
+
     file_handler = logging.FileHandler(filename=log_filename)
     stdout_handler = logging.StreamHandler(stream=sys.stdout)
     handlers = [file_handler, stdout_handler]
-    
+
     logging.basicConfig(handlers=handlers,
                         level=log_level,
                         format="%(asctime)s %(levelname)s - %(funcName)s: %(message)s",
@@ -1902,8 +2074,9 @@ def setup_logging(level: str="warning", args=None):
     # had to force this
     # https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
     logger = logging.getLogger()
-    logger.info(f"{time.strftime('%c')} - Started logging with log level {log_level}.")
-    
+    logger.info(
+        f"{time.strftime('%c')} - Started logging with log level {log_level}.")
+
     return logger
 
 
@@ -1935,8 +2108,9 @@ def main():
 
     # ---- Are we loading a state file?
     if args.infile:
-        logger.info(f"Starting application with argument infile: {args.infile}")
-        mw.load_state_from_file(args.infile.name)
+        logger.info(
+            f"Starting application with argument infile: {args.infile}")
+        mw.load_state_from_file(args.infile)
 
     # --- Go
     mw.show()

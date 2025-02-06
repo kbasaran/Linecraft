@@ -1,9 +1,6 @@
-find a better way to show which curve is selected (now it's 1 second of flashing)
 unhandled exception when sound device is removed
 make x axis guidelines 10 per decade by default
-graph axis limits not stored with save state
 does smoothing take phase into account?
-make pixel dimensions relative to font
 make rename window wider
 show mean ane median of average SPL values in list
 average SPL calculation should be on octave spaced values, not linear x axis values
