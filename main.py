@@ -111,8 +111,13 @@ class Settings:
     import_table_decimal_separator: str = ". (dot)"
 
     def __post_init__(self):
-        settings_storage_title = self.app_name + " - " + \
-            (self.version.split(".")[0] if "." in self.version else "")
+        settings_storage_title = (self.app_name
+                                  + " v"
+                                  + (".".join(self.version.split(".")[:2])
+                                     if "." in self.version
+                                     else "???"
+                                     )
+                                  )
         self.settings_sys = qtc.QSettings(
             self.author_short, settings_storage_title)
         self.read_all_from_registry()
