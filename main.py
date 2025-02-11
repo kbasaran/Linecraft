@@ -1388,7 +1388,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 # Therefore added this seciton.
                 file = Path(
                     file_raw + ".lc" if file_raw[-3:] != ".lc" else file_raw)
-                assert file.parent.is_dir()
+                assert file.parent.exists()
             else:
                 return  # nothing was selected, pick file canceled
         except:
