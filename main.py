@@ -44,7 +44,7 @@ import logging
 import time
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.2.4rc",
+                   "version": "0.3.0rc0",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
@@ -111,8 +111,13 @@ class Settings:
     import_table_decimal_separator: str = ". (dot)"
 
     def __post_init__(self):
-        settings_storage_title = self.app_name + " - " + \
-            (self.version.split(".")[0] if "." in self.version else "")
+        settings_storage_title = (self.app_name
+                                  + " v"
+                                  + (".".join(self.version.split(".")[:2])
+                                     if "." in self.version
+                                     else "???"
+                                     )
+                                  )
         self.settings_sys = qtc.QSettings(
             self.author_short, settings_storage_title)
         self.read_all_from_registry()
@@ -1383,7 +1388,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 # Therefore added this seciton.
                 file = Path(
                     file_raw + ".lc" if file_raw[-3:] != ".lc" else file_raw)
-                assert file.parent.is_dir()
+                assert file.parent.exists()
             else:
                 return  # nothing was selected, pick file canceled
         except:
