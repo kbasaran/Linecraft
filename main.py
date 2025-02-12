@@ -651,6 +651,7 @@ class CurveAnalyze(qtw.QMainWindow):
             if file_raw and (file := Path(file_raw)).is_file():
                 settings.update("last_used_folder", str(file.parent))
                 import_file = file
+
             else:
                 return
 
