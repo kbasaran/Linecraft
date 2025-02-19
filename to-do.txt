@@ -3,7 +3,6 @@ make x axis guidelines 10 per decade by default
 does smoothing take phase into account?
 make rename window wider
 show mean ane median of average SPL values in list
-average SPL calculation should be on octave spaced values, not linear x axis values
 make write_to_registry check for data type - for all your apps
-broken - import EoL file in dataset causes error!!!!!!!!!
 take improvement commits in kdbx-conversion
+handle sensitivity calculation out of bounds frequency request more elegantly

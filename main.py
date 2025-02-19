@@ -1001,7 +1001,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 "No curves selected.")
 
         f_min, f_max = settings.average_calc_f_start, settings.average_calc_f_end
-        average_value = {curve.get_full_name(): signal_tools.calculate_average(curve, f_min, f_max)
+        average_value = {curve.get_full_name(): signal_tools.calculate_average(curve, f_min, f_max, logarithmic=True)
                          for curve in selected_curves}
 
         # Build into dataframe
