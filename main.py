@@ -713,7 +713,7 @@ class CurveAnalyze(qtw.QMainWindow):
         )
 
         # ---- transpose if frequencies are in indexes
-        if import_settings["layout_type"] == "Indexes are frequencies, headers are names":
+        if import_settings["layout_type"] == 1:  # 1 means "Indexes are frequencies, headers are names"
             df = df.transpose()
 
         # ---- validate curve and header validity
@@ -1841,33 +1841,31 @@ class ImportDialog(qtw.QDialog):
     def _import_requested(self, source, user_form: pwi.UserForm):
         # Pass to easier names
         form_values = user_form.get_form_values()
-
-        no_header = form_values["import_table_no_line_headers"]
-        no_index = form_values["import_table_no_columns"]
-        layout_type = form_values["import_table_layout_type"]
-        delimiter = form_values["import_table_delimiter"]
-        decimal_separator = form_values["import_table_decimal_separator"]
-
+        
+        vals = {
+            "no_header": form_values["import_table_no_line_headers"],
+            "no_index": form_values["import_table_no_columns"],
+            "layout_type": form_values["import_table_layout_type"]["current_data"],
+            "delimiter": form_values["import_table_delimiter"]["current_data"],
+            "decimal_separator": form_values["import_table_decimal_separator"]["current_data"],
+            }
+        
         # Do validations
-        if decimal_separator == delimiter:
+        if vals["decimal_separator"] == vals["delimiter"]:
             raise ValueError(
                 "Cannot have the same character for delimiter and decimal separator.")
-        elif layout_type == "Headers are frequencies, indexes are names" and no_header == 0:
+        elif vals["layout_type"] == 0 and vals["no_header"] == 0:
             raise ValueError("Header line cannot be zero. Since you have selected"
                              " headers as frequencies, there needs to be a line for headers.")
-        elif layout_type == "Indexes are frequencies, headers are names" and no_index == 0:
+        elif vals["layout_type"] == 1 and vals["no_index"] == 0:
             raise ValueError("Index column cannot be zero. Since you have selected"
                              " indexes as frequencies, there needs to be a column for indexes.")
         else:
             # Validations passed. Save settings.
             self._save_form_values_to_settings(user_form)
 
-        user_settings = {}
-        for key in ["no_header", "no_index", "layout_type", "delimiter", "decimal_separator"]:
-            user_settings[key] = locals().get(key)
-
         try:
-            self.signal_import_table_request.emit(source, user_settings)
+            self.signal_import_table_request.emit(source, vals)
         except:
             self.signal_table_import_fail.emit()
 
