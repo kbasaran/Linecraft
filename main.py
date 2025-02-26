@@ -151,10 +151,11 @@ class Settings:
 
             setattr(self, field.name, value)
 
-    def as_dict(self):
+    def as_dict(self):  # better use asdict method from dataclasses instead of this
+        # return the settings as a dict
         settings = {}
         for field in fields(self):
-            settings[field] = getattr(self, field.name)
+            settings[field.name] = getattr(self, field.name)
         return settings
 
     def __repr__(self):
