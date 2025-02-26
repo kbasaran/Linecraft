@@ -6,3 +6,4 @@ show mean ane median of average SPL values in list
 make write_to_registry check for data type - for all your apps
 take improvement commits in kdbx-conversion
 handle sensitivity calculation out of bounds frequency request more elegantly
+show_legend checkbox in settings form returns none type and not boolean
