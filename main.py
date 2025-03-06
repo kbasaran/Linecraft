@@ -401,22 +401,10 @@ class CurveAnalyze(qtw.QMainWindow):
             return
         else:
             curve = self.get_selected_curves()[0]
-
-        if settings.export_ppo == 0:
-            xy_export = np.transpose(curve.get_xy(ndarray=True))
-        else:
-            x_intp, y_intp = signal_tools.interpolate_to_ppo(
-                *curve.get_xy(),
-                settings.export_ppo,
-                settings.interpolate_must_contain_hz,
-            )
-            if signal_tools.arrays_are_equal((x_intp, curve.get_xy()[0])):
-                xy_export = np.transpose(curve.get_xy(ndarray=True))
-            else:
-                xy_export = np.column_stack((x_intp, y_intp))
-
-        pd.DataFrame(xy_export).to_clipboard(
-            excel=True, index=False, header=False)
+        
+        curve.export_to_clipboard(ppo=settings.export_ppo,
+                                  must_include_freq=settings.interpolate_must_contain_hz,
+                                  )
         self.signal_good_beep.emit()
 
     def _get_curve_from_clipboard(self):
