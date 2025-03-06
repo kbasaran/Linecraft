@@ -7,3 +7,13 @@ make write_to_registry check for data type - for all your apps
 take improvement commits in kdbx-conversion
 handle sensitivity calculation out of bounds frequency request more elegantly
 show_legend checkbox in settings form returns none type and not boolean
+recognize the names from Comsol exports. they look like this:
+
+"""
+freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
+1000.0	90.291
+1059.5	90.189
+1122.5	90.031
+1189.2	90.263
+
+""""
