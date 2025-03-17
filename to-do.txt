@@ -2,11 +2,12 @@ unhandled exception when sound device is removed
 make x axis guidelines 10 per decade by default
 does smoothing take phase into account?
 make rename window wider
-show mean ane median of average SPL values in list
+show mean and median of average SPL values in list
 make write_to_registry check for data type - for all your apps
 take improvement commits in kdbx-conversion
 handle sensitivity calculation out of bounds frequency request more elegantly
-show_legend checkbox in settings form returns none type and not boolean
+add drag and drop to open file
+update graph not happening after smoothing
 recognize the names from Comsol exports. they look like this:
 
 """
