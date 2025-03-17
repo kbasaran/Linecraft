@@ -258,10 +258,10 @@ class CurveAnalyze(qtw.QMainWindow):
         menu_bar = self.menuBar()
 
         file_menu = menu_bar.addMenu("File")
-        load_action = file_menu.addAction(
-            "Load state..", self.pick_a_file_and_load_state_from_it)
+        add_action = file_menu.addAction(
+            "Add state to current..", self.pick_a_file_and_add_state_from_it)
         save_action = file_menu.addAction(
-            "Save state..", self.save_state_to_file)
+            "Save current state..", self.save_state_to_file)
 
         edit_menu = menu_bar.addMenu("Edit")
         settings_action = edit_menu.addAction(
@@ -1391,17 +1391,17 @@ class CurveAnalyze(qtw.QMainWindow):
             f.write(package)
         self.signal_good_beep.emit()
 
-    def pick_a_file_and_load_state_from_it(self):
+    def pick_a_file_and_add_state_from_it(self):
         file = qtw.QFileDialog.getOpenFileName(self, caption='Get state from a save file..',
                                                dir=settings.last_used_folder,
                                                filter='Linecraft files (*.lc)',
                                                )[0]
         if file:
-            self.load_state_from_file(file)
+            self.add_state_from_file(file)
         else:
             pass  # canceled file select
 
-    def load_state_from_file(self, file: (str, Path)):
+    def add_state_from_file(self, file: (str, Path)):
 
         try:
             my_file = Path(file)
@@ -2096,7 +2096,7 @@ def main():
     if args.infile:
         logger.info(
             f"Starting application with argument infile: {args.infile}")
-        mw.load_state_from_file(args.infile)
+        mw.add_state_from_file(args.infile)
 
     # --- Go
     mw.show()
