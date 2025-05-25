@@ -232,7 +232,10 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(app_definitions["app_name"])
+        self.setWindowTitle(" - ".join(
+            (app_definitions["app_name"],
+             app_definitions["version"])
+            ))
         self._create_core_objects()
         self._create_menu_bar()
         self._create_widgets()
