@@ -44,7 +44,7 @@ import logging
 import time
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.3.0rc1",
+                   "version": "0.3.0",
                    # "version": "Test build " + today.strftime("%Y.%m.%d"),
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
