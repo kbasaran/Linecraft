@@ -365,6 +365,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.signal_flash_curve_request.connect(self.graph.flash_curve)
         self.signal_update_labels_request.connect(
             self.graph.update_labels_and_visibilities)
+        self.signal_user_settings_changed.connect(self.graph.set_grid_type)
         self.signal_reset_colors_request.connect(self.graph.reset_colors)
         self.signal_remove_curves_request.connect(
             self.graph.remove_multiple_line2d)
@@ -1963,10 +1964,10 @@ class SettingsDialog(qtw.QDialog):
 
     def _save_and_close(self, user_form):
         vals = user_form.get_form_values()
-        if vals["matplotlib_style"]["current_text"] != settings.matplotlib_style or vals["graph_grids"]["current_text"] != settings.graph_grids:
+        if vals["matplotlib_style"]["current_text"] != settings.matplotlib_style:
             message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                           "Information",
-                                          "Application needs to be restarted to be able to use the new graph settings.",
+                                          "Application needs to be restarted to be able to use the new Matplotlib style.",
                                           )
             message_box.setStandardButtons(
                 qtw.QMessageBox.Cancel | qtw.QMessageBox.Ok)
