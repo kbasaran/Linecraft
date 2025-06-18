@@ -18,4 +18,4 @@ freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
 1189.2	90.263
 
 """"
-make the 1 second delay into 3 seconds, to highlight curves
+
