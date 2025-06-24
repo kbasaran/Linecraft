@@ -25,7 +25,7 @@ Linecraft is tailored to stay responsive while working with relatively large num
 2. Run installer and follow instructions
 
 ## Within an existing Python environment (Windows/Linux)
-> Only tested with Python 3.11.5
+> Only tested with Python 3.12
 ```
 pip install -r requirements.txt
 python main.py
@@ -152,8 +152,11 @@ Smooths the selected curves.
 
 ### Outlier detection
 ![](https://github.com/kbasaran/Linecraft/blob/main/images/sc_outliers_dialog.png)
+[update image with frequency range limited version]
 
-This feature is used to detect curves that are considered outliers. It will check if the curves have data points outside of the fence values defined using the inter-quartile range (IQR) method. The fence is created symmetrically above and below the median curve. The distance of the fence to the median is defined by the fence value given by user.
+This feature is used to detect curves that are considered outliers. It will check if the curves have any data points outside of the fence, which is defined using the inter-quartile range (IQR) method. The fence is created symmetrically above and below the median curve.
+The distance of the fence to the median is defined by the multiplier given by user. 1.5 is a common value used in statistics.
+The calculation will only be done in the user defined frequency range. Curves will be interpolated to this range before the calculations.
 
 The control is done per frequency point. If a single value in the curve is outside the fences, the curve is considered an outlier.
 
@@ -167,11 +170,28 @@ Interpolates the selected curve(s) to a new array of frequencies that is octavel
 ![](https://github.com/kbasaran/Linecraft/blob/main/images/sc_interpolation_example.png)
 
 ### Best fit to current
-Creates a list of curves that are most similar to the selected curve. The error is calculated as the standard deviation of the residuals at each frequency. It is possible to define a certain frequency range and apply a weighing else than 1 for it. This range is referred to as "critical range" in the application but can also be set to a lower weighing.
-
 ![](https://github.com/kbasaran/Linecraft/blob/main/images/sc_best_fit_settings.png)
 
+Creates a list of curves that are most similar to the selected curve. The error is calculated as the standard deviation of the residuals at each frequency. It is possible to define a certain frequency range and apply a weighing else than 1 for it. This range is referred to as "critical range" in the application but can also be set to a lower weighing.
+
 ![](https://github.com/kbasaran/Linecraft/blob/main/images/sc_best_fit_results_example.png)
+
+## Summation
+[add image here for summation settings]
+To use this function you need to have selected two curves. The curve with smaller mean value will be added or subtracted from the curve with the larger mean value.
+If the two curves have different ranges interpolation will be used and only the common range will be calculated.
+
+## Average value
+[add image here for average value settings]
+Provides a table with average values calculated for selected curves.
+
+- The averaging is done on logarithmically spaced data. Thus every octave has the same weight.
+- Calculation is done only for chosen frequency range and if no data points exist at those frequencies interpolation will be used.
+  - If a frequency range outside the defined frequency range is given the application will throw an error.
+
+## Gain
+[add image here for gain settings]
+Shifts the selected curves in y axis for the given amount. Results are be added as separate curves.
 
 ## Settings
 ![](https://github.com/kbasaran/Linecraft/blob/main/images/sc_settings.png) 
