@@ -19,4 +19,4 @@ freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
 
 """"
 
-update readme.md with 0.3.* features
+"QThread: Destroyed while thread is still running" happens
