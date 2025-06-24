@@ -152,7 +152,6 @@ Smooths the selected curves.
 
 ### Outlier detection
 ![](https://github.com/kbasaran/Linecraft/blob/main/images/sc_outliers_dialog.png)
-[update image with frequency range limited version]
 
 This feature is used to detect curves that are considered outliers. It will check if the curves have any data points outside of the fence, which is defined using the inter-quartile range (IQR) method. The fence is created symmetrically above and below the median curve.
 The distance of the fence to the median is defined by the multiplier given by user. 1.5 is a common value used in statistics.
@@ -177,12 +176,12 @@ Creates a list of curves that are most similar to the selected curve. The error 
 ![](https://github.com/kbasaran/Linecraft/blob/main/images/sc_best_fit_results_example.png)
 
 ## Summation
-[add image here for summation settings]
+![](https://github.com/kbasaran/Linecraft/blob/main/images/sc_summation_settings.png)
 To use this function you need to have selected two curves. The curve with smaller mean value will be added or subtracted from the curve with the larger mean value.
 If the two curves have different ranges interpolation will be used and only the common range will be calculated.
 
 ## Average value
-[add image here for average value settings]
+![](https://github.com/kbasaran/Linecraft/blob/main/images/sc_average_value_settings.png)
 Provides a table with average values calculated for selected curves.
 
 - The averaging is done on logarithmically spaced data. Thus every octave has the same weight.
@@ -190,7 +189,7 @@ Provides a table with average values calculated for selected curves.
   - If a frequency range outside the defined frequency range is given the application will throw an error.
 
 ## Gain
-[add image here for gain settings]
+![](https://github.com/kbasaran/Linecraft/blob/main/images/sc_gain_settings.png)
 Shifts the selected curves in y axis for the given amount. Results are be added as separate curves.
 
 ## Settings
