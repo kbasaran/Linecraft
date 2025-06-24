@@ -19,3 +19,5 @@ freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
 
 """"
 
+must add new picture for outlier detection, gain, summation, average calculation
+
