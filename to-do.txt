@@ -19,6 +19,5 @@ freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
 
 """"
 
-must add new picture for outlier detection, gain, summation, average calculation
+"QThread: Destroyed while thread is still running" happens
 
-move readme changes to main and 0.3.2 also
