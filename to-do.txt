@@ -19,4 +19,10 @@ freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
 
 """"
 
-"QThread: Destroyed while thread is still running" happens
+
+"QThread: Destroyed while thread is still running" happens in Windows. Current connection:
+    # Connections
+    app.aboutToQuit.connect(sound_engine.release_all)
+    app.aboutToQuit.connect(sound_engine_thread.quit)  # for clean exit
+
+is the release all causing this maybe?
