@@ -47,7 +47,7 @@ app_definitions = {"app_name": "Linecraft",
                    "version": "0.3.3",
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
-                   "icon_path": str(Path("./logo/icon.ico")),
+                   "icon_path": "logo/icon.ico",  # relative posix path
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
                    "email": "kbasaran@gmail.com",
@@ -1378,10 +1378,11 @@ class CurveAnalyze(qtw.QMainWindow):
         try:
             file_raw = path_unverified[0]
             if file_raw:  # if we received a string
+                file = Path(file_raw)
                 # Filter not working as expected in nautilus. Saves files without including the extension.
                 # Therefore added this seciton.
-                file = Path(
-                    file_raw + ".lc" if file_raw[-3:] != ".lc" else file_raw)
+                if file.suffix != ".lc":
+                    file = file.with_suffix(".lc")
                 assert file.parent.exists()
             else:
                 return  # nothing was selected, pick file canceled
@@ -2005,6 +2006,17 @@ class AutoImporter(qtc.QThread):
                 logger.warning(e)
 
 
+def get_main_dir():
+    
+    if getattr(sys, 'frozen', False):
+        # The application is frozen
+        return Path(sys.executable).parent
+        
+    else:
+        # The application is not frozen
+        return Path(__file__).parent
+
+
 def parse_args(app_definitions):
     import argparse
 
@@ -2082,7 +2094,8 @@ def main():
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to do the sys.argv with that?
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
-        app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
+        icon_path = str(get_main_dir().joinpath(app_definitions["icon_path"]))
+        app.setWindowIcon(qtg.QIcon(icon_path))
 
     # ---- Catch exceptions and handle with pop-up widget
     error_handler = pwi.ErrorHandlerUser(app, logger)
