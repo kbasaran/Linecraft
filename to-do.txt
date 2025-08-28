@@ -20,3 +20,4 @@ freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
 """"
 
 open new windows under same app, like speaker calculator does.
+make "remove" button more noticable and dangerous in appearance.
