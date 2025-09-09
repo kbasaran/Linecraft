@@ -21,3 +21,5 @@ freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
 
 open new windows under same app, like speaker calculator does.
 make "remove" button more noticable and dangerous in appearance.
+
+calculate outliers, and then use the median curve from outliers as reference curve. you get an error for "inf or NaN axis limits" from matplotlib.
