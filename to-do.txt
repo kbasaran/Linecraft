@@ -23,3 +23,5 @@ open new windows under same app, like speaker calculator does.
 make "remove" button more noticable and dangerous in appearance.
 
 calculate outliers, and then use the median curve from outliers as reference curve. you get an error for "inf or NaN axis limits" from matplotlib.
+
+flash curve shuld also bring it to the front
