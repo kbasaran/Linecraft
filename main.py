@@ -44,7 +44,7 @@ import logging
 import time
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.3.3",
+                   "version": "0.3.4",
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
                    "icon_path": "logo/icon.ico",  # relative posix path
@@ -777,9 +777,13 @@ class CurveAnalyze(qtw.QMainWindow):
             # Block precessing options
             indexes_and_curves = self.get_selected_curves(as_dict=True)
             if len(indexes_and_curves) == 1:
+                index, curve = list(indexes_and_curves.items())[0]
+
+                # Update graph
+                self.signal_toggle_reference_curve_request.emit([index, curve])
+
                 self._interactable_widgets["processing_pushbutton"].setEnabled(
                     False)
-                index, curve = list(indexes_and_curves.items())[0]
 
                 # mark it as reference
                 curve.add_name_suffix("reference")
@@ -788,9 +792,6 @@ class CurveAnalyze(qtw.QMainWindow):
                 # Update the names in qlist widget
                 reference_item = self.qlistwidget_for_curves.item(index)
                 reference_item.setText(curve.get_full_name())
-
-                # Update graph
-                self.signal_toggle_reference_curve_request.emit([index, curve])
 
             else:
                 # multiple selections
