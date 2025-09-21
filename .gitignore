@@ -2,7 +2,6 @@
 # User specific
 private/
 *.pyproject*
-.idea/
 
 
 # Byte-compiled / optimized / DLL files
