@@ -288,7 +288,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 "auto_import": "Auto import",
                 "reset_indexes": "Reset indexes",
                 "reset_colors": "Reset colors",
-                "remove": "Remove",
+                "remove": "| Remove |",
                 "rename": "Rename",
                 "move_up": "Move up",
                 "move_to_top": "Move to top",
@@ -302,6 +302,16 @@ class CurveAnalyze(qtw.QMainWindow):
              "auto_import": "Attempt an import whenever new data is found on the clipboard.",
              },
         )
+
+        # Create a palette
+        palette = qtg.QPalette()
+
+        # Set the button text color to red
+        palette.setColor(qtg.QPalette.ButtonText, qtg.QColor(190, 70, 70))
+
+        # Apply the palette to the button
+        self.graph_buttons.buttons()["remove_pushbutton"].setPalette(palette)
+
         # Add the widgets that users interact with into the dictionary
         self.graph_buttons.add_elements_to_dict(self._interactable_widgets)
 
