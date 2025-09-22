@@ -285,7 +285,7 @@ class CurveAnalyze(qtw.QMainWindow):
             {
                 "import_curve": "Import curve",
                 "import_table": "Import table",
-                "auto_import": "Auto import",
+                # "auto_import": "Auto import",
                 "reset_indexes": "Reset indexes",
                 "reset_colors": "Reset colors",
                 "remove": "| Remove |",
@@ -299,7 +299,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 "export_curve": "Export curve",
             },
             {"import_curve": "Import 2D curve from clipboard",
-             "auto_import": "Attempt an import whenever new data is found on the clipboard.",
+             # "auto_import": "Attempt an import whenever new data is found on the clipboard.",
              },
         )
 
@@ -316,7 +316,7 @@ class CurveAnalyze(qtw.QMainWindow):
         self.graph_buttons.add_elements_to_dict(self._interactable_widgets)
 
         # ---- Set types and states for buttons
-        self._interactable_widgets["auto_import_pushbutton"].setCheckable(True)
+        # self._interactable_widgets["auto_import_pushbutton"].setCheckable(True)
         self._interactable_widgets["set_reference_pushbutton"].setCheckable(
             True)
 
@@ -358,8 +358,8 @@ class CurveAnalyze(qtw.QMainWindow):
             self.show_curves)
         self._interactable_widgets["export_curve_pushbutton"].clicked.connect(
             self._export_curve)
-        self._interactable_widgets["auto_import_pushbutton"].toggled.connect(
-            self._auto_importer_status_toggle)
+        # self._interactable_widgets["auto_import_pushbutton"].toggled.connect(
+        #     self._auto_importer_status_toggle)
         self._interactable_widgets["set_reference_pushbutton"].toggled.connect(
             self.reference_curve_button_clicked)
         self._interactable_widgets["processing_pushbutton"].clicked.connect(
