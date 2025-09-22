@@ -13,3 +13,5 @@ minor locators not working really. y axis has 5dB steps only (major locators)
 add action when a line is picked
 
 pyperclip.waitforpaste is broken. disabled the button temmporarily.
+
+hiding while a reference is set is buggy
