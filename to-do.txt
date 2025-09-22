@@ -1,10 +1,8 @@
 unhandled exception when sound device is removed
 make x axis guidelines 10 per decade by default
 make rename window wider
-show mean and median of average SPL values in list
 make write_to_registry check for data type - for all your apps
 take improvement commits in kdbx-conversion
-handle sensitivity calculation out of bounds frequency request more elegantly
 add drag and drop to open file
 update graph not happening after smoothing
 

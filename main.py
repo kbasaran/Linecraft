@@ -1078,6 +1078,9 @@ class CurveAnalyze(qtw.QMainWindow):
         result_text += "\n\n"
         result_text += tabulate(df[["Average values"]],
                                 headers=("Item name", "Average"), floatfmt=(".2f"))
+        result_text += "\n"
+        result_text += f"\nMedian of averages: {df[["Average values"]].median().values[0]:.2f}"
+        result_text += f"\nMean of averages:   {df[["Average values"]].mean().values[0]:.2f}"
 
         return {"title": "Average values", "result_text": result_text}
 
