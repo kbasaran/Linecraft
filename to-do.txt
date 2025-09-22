@@ -8,17 +8,6 @@ handle sensitivity calculation out of bounds frequency request more elegantly
 add drag and drop to open file
 update graph not happening after smoothing
 
-recognize the names from Comsol exports. they look like this:
-
-"""
-freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
-1000.0	90.291
-1059.5	90.189
-1122.5	90.031
-1189.2	90.263
-
-""""
-
 open new windows under same app, like speaker calculator does.
 
 minor locators not working really. y axis has 5dB steps only (major locators)
