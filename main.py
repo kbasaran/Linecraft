@@ -926,6 +926,10 @@ class CurveAnalyze(qtw.QMainWindow):
         else:
             indexes_and_curves = self.get_selected_curves(as_dict=True)
 
+        if any([curve.is_reference() for _, curve in indexes_and_curves.items()]):
+            pwi.ErrorPopup("Cannot modify active reference curve.", self)
+            return
+
         for index, curve in indexes_and_curves.items():
             item = self.qlistwidget_for_curves.item(index)
 
@@ -942,6 +946,10 @@ class CurveAnalyze(qtw.QMainWindow):
             return
         else:
             indexes_and_curves = self.get_selected_curves(as_dict=True)
+
+        if any([curve.is_reference() for _, curve in indexes_and_curves.items()]):
+            pwi.ErrorPopup("Cannot modify active reference curve.", self)
+            return
 
         for index, curve in indexes_and_curves.items():
             item = self.qlistwidget_for_curves.item(index)
