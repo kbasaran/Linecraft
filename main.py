@@ -437,13 +437,8 @@ class CurveAnalyze(qtw.QMainWindow):
         if self.return_false_and_beep_if_no_curve_selected():
             return
         elif len(self.qlistwidget_for_curves.selectedItems()) > 1:
-            message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
-                                          "Feature not Implemented",
-                                          "Can only export one curve at a time.",
-                                          )
-            message_box.setStandardButtons(qtw.QMessageBox.Ok)
-            message_box.exec()
-            return
+            error_message = "Can only export one curve at a time."
+            pwi.ErrorPopup(error_message, self)
         else:
             curve = self.get_selected_curves()[0]
         
@@ -1178,12 +1173,10 @@ class CurveAnalyze(qtw.QMainWindow):
     def _show_best_fits(self):
         selected_curves = self.get_selected_curves(as_dict=True)
         if len(selected_curves) != 1:
-            warning = qtw.QMessageBox(qtw.QMessageBox.Warning,
-                                      "Multiple curves found in selection",
-                                      "For this operation you need to choose a single curve from the list.",
-                                      qtw.QMessageBox.Ok,
-                                      )
-            warning.exec()
+            error_message = ("Multiple curves found in selection."
+                            "\nTo find best fit to a curve, you need to choose a single curve from the list first."
+                             )
+            pwi.ErrorPopup(error_message, self)
             return {}
 
         else:
@@ -1327,13 +1320,6 @@ class CurveAnalyze(qtw.QMainWindow):
         self.signal_user_settings_changed.emit()
         self.graph.update_figure(recalculate_limits=False)
         self.signal_good_beep.emit()
-
-    def _not_implemented_popup(self):
-        message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
-                                      "Feature not Implemented",
-                                      )
-        message_box.setStandardButtons(qtw.QMessageBox.Ok)
-        message_box.exec()
 
     def open_about_menu(self):
         result_text = "\n".join([
