@@ -1,6 +1,5 @@
 unhandled exception when sound device is removed
 make x axis guidelines 10 per decade by default
-does smoothing take phase into account?
 make rename window wider
 show mean and median of average SPL values in list
 make write_to_registry check for data type - for all your apps
@@ -8,6 +7,7 @@ take improvement commits in kdbx-conversion
 handle sensitivity calculation out of bounds frequency request more elegantly
 add drag and drop to open file
 update graph not happening after smoothing
+
 recognize the names from Comsol exports. they look like this:
 
 """
@@ -20,8 +20,7 @@ freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
 """"
 
 open new windows under same app, like speaker calculator does.
-make "remove" button more noticable and dangerous in appearance.
 
-calculate outliers, and then use the median curve from outliers as reference curve. you get an error for "inf or NaN axis limits" from matplotlib.
+minor locators not working really. y axis has 5dB steps only (major locators)
 
-flash curve shuld also bring it to the front
+add action when a line is picked

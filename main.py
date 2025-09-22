@@ -28,6 +28,7 @@ from copy import copy, deepcopy
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
+from PySide6.QtWidgets import QListWidgetItem
 
 from generictools.graphing_widget import MatplotlibWidget
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
@@ -225,7 +226,6 @@ class CurveAnalyze(qtw.QMainWindow):
     # signal_update_visibility_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     # it is in fact a dict but PySide6 has a bug for passing dict
     signal_reposition_curves_request = qtc.Signal(object)
-    signal_flash_curve_request = qtc.Signal(int)
 
     signal_reference_curve_activate = qtc.Signal(int)
     signal_reference_curve_deactivate = qtc.Signal(int)
@@ -369,14 +369,12 @@ class CurveAnalyze(qtw.QMainWindow):
         self._interactable_widgets["import_table_pushbutton"].clicked.connect(
             self._import_table_clicked)
 
-        # ---- Double click for highlighting/flashing a curve
-        self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
+        # ---- Double click for highlighting a curve
+        self.qlistwidget_for_curves.itemActivated.connect(self.toggle_highlight)
 
         # ---- Signals to Matplolib graph
-        # self.signal_update_figure_request.connect(self.graph.update_figure)
         self.signal_reposition_curves_request.connect(
             self.graph.change_lines_order)
-        self.signal_flash_curve_request.connect(self.graph.flash_curve)
         self.signal_update_labels_request.connect(
             self.graph.update_labels_and_visibilities)
         self.signal_reset_colors_request.connect(self.graph.reset_colors)
@@ -607,7 +605,7 @@ class CurveAnalyze(qtw.QMainWindow):
             curve.set_name_base(text)
             list_item = self.qlistwidget_for_curves.item(index)
             list_item.setText(curve.get_full_name())
-            new_labels[index] = (curve.get_full_name(), curve.is_visible())
+            new_labels[index] = (curve.get_full_name(), curve.is_visible(), curve.is_highlighted())
 
         self.graph.update_labels_and_visibilities(new_labels)
 
@@ -880,7 +878,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 self.qlistwidget_for_curves.addItem(list_item)
 
                 self.graph.add_line2d(i_max, curve.get_full_name(), curve.get_xy(),
-                                      update_figure=update_figure, line2d_kwargs=line2d_kwargs,
+                                      update_figure=update_figure, line2d_kwargs={"alpha": 0.9, **line2d_kwargs},
                                       )
 
                 return i_max
@@ -898,11 +896,29 @@ class CurveAnalyze(qtw.QMainWindow):
                 self.qlistwidget_for_curves.insertItem(i_insert, list_item)
 
                 self.graph.add_line2d(i_insert, curve.get_full_name(), curve.get_xy(
-                ), update_figure=update_figure, line2d_kwargs=line2d_kwargs)
+                ), update_figure=update_figure, line2d_kwargs={"alpha": 0.9, **line2d_kwargs})
 
                 return i_insert
         else:
             raise ValueError("Invalid curve")
+
+
+    def set_qitem_font(self, item: QListWidgetItem, set_to: str) -> None:
+        """
+        Set font type for a list item.
+        """
+        font = item.font()
+        match set_to:
+            case "normal":
+                font.setWeight(qtg.QFont.Normal)
+            case "thin":
+                font.setWeight(qtg.QFont.Thin)
+            case "bold":
+                font.setWeight(qtg.QFont.Bold)
+            case _:
+                return
+
+        item.setFont(font)
 
     def hide_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
@@ -914,10 +930,10 @@ class CurveAnalyze(qtw.QMainWindow):
 
         for index, curve in indexes_and_curves.items():
             item = self.qlistwidget_for_curves.item(index)
-            font = item.font()
-            font.setWeight(qtg.QFont.Thin)
-            item.setFont(font)
+
+            self.set_qitem_font(item, "thin")
             curve.set_visible(False)
+            curve.set_highlighted(False)
 
         self.update_visibilities_of_graph_curves(indexes_and_curves)
 
@@ -931,24 +947,34 @@ class CurveAnalyze(qtw.QMainWindow):
 
         for index, curve in indexes_and_curves.items():
             item = self.qlistwidget_for_curves.item(index)
-            font = item.font()
-            font.setWeight(qtg.QFont.Normal)
-            item.setFont(font)
 
+            self.set_qitem_font(item, "normal")
             curve.set_visible(True)
+            curve.set_highlighted(False)
 
         self.update_visibilities_of_graph_curves(indexes_and_curves)
 
-    def _flash_curve(self, item: qtw.QListWidgetItem):
+    def toggle_highlight(self, item: qtw.QListWidgetItem):
         index = self.qlistwidget_for_curves.row(item)
-        self.signal_flash_curve_request.emit(index)
+        curve = self.curves[index]
+        if curve.is_visible() is False or curve.is_highlighted() is True:
+            self.show_curves([index])
+        elif curve.is_visible() is True and curve.is_highlighted() is False:
+            curve.set_highlighted(True)
+            self.set_qitem_font(item, "bold")
+        # also make the Qlist item bold/unbold here
+        self.update_visibilities_of_graph_curves(indexes_and_curves={index: curve})
+
+    def reset_highlights(self):
+        for curve in self.curves:
+            curve.set_highlighted(False)
 
     def update_visibilities_of_graph_curves(self, indexes_and_curves=None, update_figure=True):
         if not indexes_and_curves:
-            visibility_states = {i: (None, curve.is_visible())
+            visibility_states = {i: (None, curve.is_visible(), curve.is_highlighted())
                                  for i, curve in enumerate(self.curves)}
         else:
-            visibility_states = {i: (None, curve.is_visible())
+            visibility_states = {i: (None, curve.is_visible(), curve.is_highlighted())
                                  for i, curve in indexes_and_curves.items()}
         self.graph.update_labels_and_visibilities(
             visibility_states, update_figure=update_figure)
