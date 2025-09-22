@@ -254,6 +254,10 @@ class CurveAnalyze(qtw.QMainWindow):
             self.remove_curves()
         if keyEvent.matches(qtg.QKeySequence.Cancel):
             self.qlistwidget_for_curves.setCurrentRow(-1)
+        if keyEvent.matches(qtg.QKeySequence.Paste):
+            self.import_single_curve()
+        if keyEvent.matches(qtg.QKeySequence.Copy):
+            self._export_curve()
 
     def _create_core_objects(self):
         # a dictionary of QWidgets that users interact with
