@@ -441,11 +441,10 @@ class CurveAnalyze(qtw.QMainWindow):
             pwi.ErrorPopup(error_message, self)
         else:
             curve = self.get_selected_curves()[0]
-        
-        curve.export_to_clipboard(ppo=settings.export_ppo,
-                                  must_include_freq=settings.interpolate_must_contain_hz,
-                                  )
-        self.signal_good_beep.emit()
+            curve.export_to_clipboard(ppo=settings.export_ppo,
+                                      must_include_freq=settings.interpolate_must_contain_hz,
+                                      )
+            self.signal_good_beep.emit()
 
     def _get_curve_from_clipboard(self):
         """Read a signal_tools.Curve object from clipboard."""
@@ -964,10 +963,6 @@ class CurveAnalyze(qtw.QMainWindow):
         # also make the Qlist item bold/unbold here
         self.update_visibilities_of_graph_curves(indexes_and_curves={index: curve})
 
-    def reset_highlights(self):
-        for curve in self.curves:
-            curve.set_highlighted(False)
-
     def update_visibilities_of_graph_curves(self, indexes_and_curves=None, update_figure=True):
         if not indexes_and_curves:
             visibility_states = {i: (None, curve.is_visible(), curve.is_highlighted())
@@ -1232,7 +1227,7 @@ class CurveAnalyze(qtw.QMainWindow):
             result_text += tabulate(
                 df[["Standard deviation of weighted residuals"]], headers=("Item name", "Swr"))
 
-        return {"title": "Best fits", "result_text": result_text}
+            return {"title": "Best fits", "result_text": result_text}
 
     def _interpolate_curves(self):
         selected_curves = self.get_selected_curves(as_dict=True)
@@ -1762,8 +1757,7 @@ class ProcessingDialog(qtw.QDialog):
 
     def _save_and_close(self):
         active_tab_index = self.tab_widget.currentIndex()
-        user_form, processing_function_name = self.user_forms_and_recipient_functions[
-            active_tab_index]
+        user_form, processing_function_name = self.user_forms_and_recipient_functions[active_tab_index]
         settings.update("processing_selected_tab",
                         self.tab_widget.currentIndex())
 
