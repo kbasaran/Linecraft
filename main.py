@@ -410,10 +410,10 @@ class CurveAnalyze(qtw.QMainWindow):
         #     lambda: self._interactable_widgets["move_up_pushbutton"].setEnabled(False))
         # self.graph.signal_reference_curve_activated.connect(
         #     lambda: self._interactable_widgets["move_to_top_pushbutton"].setEnabled(False))
-        self.graph.signal_reference_curve_activated.connect(
-            lambda: self._interactable_widgets["reset_indexes_pushbutton"].setEnabled(False))
-        self.graph.signal_reference_curve_activated.connect(
-            lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(False))
+        # self.graph.signal_reference_curve_activated.connect(
+        #     lambda: self._interactable_widgets["reset_indexes_pushbutton"].setEnabled(False))
+        # self.graph.signal_reference_curve_activated.connect(
+        #     lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(False))
         self.graph.signal_reference_curve_activated.connect(
             self.reference_curve_activate_successful_actions)
 
@@ -429,10 +429,10 @@ class CurveAnalyze(qtw.QMainWindow):
         #     lambda: self._interactable_widgets["move_up_pushbutton"].setEnabled(True))
         # self.graph.signal_reference_curve_deactivated.connect(
         #     lambda: self._interactable_widgets["move_to_top_pushbutton"].setEnabled(True))
-        self.graph.signal_reference_curve_deactivated.connect(
-            lambda: self._interactable_widgets["reset_indexes_pushbutton"].setEnabled(True))
-        self.graph.signal_reference_curve_deactivated.connect(
-            lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_deactivated.connect(
+        #     lambda: self._interactable_widgets["reset_indexes_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_deactivated.connect(
+        #     lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(True))
         self.graph.signal_reference_curve_deactivated.connect(
             self.reference_curve_deactivated_actions)
 
@@ -447,10 +447,10 @@ class CurveAnalyze(qtw.QMainWindow):
         #     lambda: self._interactable_widgets["move_up_pushbutton"].setEnabled(True))
         # self.graph.signal_reference_curve_failed.connect(
         #     lambda: self._interactable_widgets["move_to_top_pushbutton"].setEnabled(True))
-        self.graph.signal_reference_curve_failed.connect(
-            lambda: self._interactable_widgets["reset_indexes_pushbutton"].setEnabled(True))
-        self.graph.signal_reference_curve_failed.connect(
-            lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_failed.connect(
+        #     lambda: self._interactable_widgets["reset_indexes_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_failed.connect(
+        #     lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(True))
         self.graph.signal_reference_curve_failed.connect(self.signal_bad_beep)
         self.graph.signal_reference_curve_failed.connect(lambda x: pwi.ErrorPopup(x, self))
 
