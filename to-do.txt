@@ -1,21 +1,19 @@
 unhandled exception when sound device is removed
 make x axis guidelines 10 per decade by default
-does smoothing take phase into account?
 make rename window wider
-show mean and median of average SPL values in list
 make write_to_registry check for data type - for all your apps
 take improvement commits in kdbx-conversion
-handle sensitivity calculation out of bounds frequency request more elegantly
 add drag and drop to open file
 update graph not happening after smoothing
-recognize the names from Comsol exports. they look like this:
 
-"""
-freq (Hz)	SPL at 1m, Point: (0, 1000*Acc_r)
-1000.0	90.291
-1059.5	90.189
-1122.5	90.031
-1189.2	90.263
+open new windows under same app, like speaker calculator does.
 
-""""
+minor locators not working really. y axis has 5dB steps only (major locators)
 
+add action when a line is picked
+
+pyperclip.waitforpaste is broken. disabled the button temmporarily.
+
+y limits for thd curves makes no sense. 0 is not in there.
+
+improve error handling in processing with invalid curve selections

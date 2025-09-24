@@ -28,6 +28,7 @@ from copy import copy, deepcopy
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
+from PySide6.QtWidgets import QListWidgetItem
 
 from generictools.graphing_widget import MatplotlibWidget
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
@@ -43,18 +44,21 @@ import pickle
 import logging
 import time
 
+from generictools.signal_tools import curve_summation
+
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.3.3",
-                   # "version": "Test build " + today.strftime("%Y.%m.%d"),
+                   "version": "0.4.0",
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
-                   "icon_path": str(Path("./logo/icon.ico")),
+                   "icon_path": "logo/icon.ico",  # relative posix path
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
                    "email": "kbasaran@gmail.com",
                    "website": "https://github.com/kbasaran",
                    }
 
+# uncomment for release candidate builds
+# app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 @dataclass
 class Settings:
@@ -224,9 +228,11 @@ class CurveAnalyze(qtw.QMainWindow):
     # signal_update_visibility_request = qtc.Signal(object)  # it is in fact a dict but PySide6 has a bug for passing dict
     # it is in fact a dict but PySide6 has a bug for passing dict
     signal_reposition_curves_request = qtc.Signal(object)
-    signal_flash_curve_request = qtc.Signal(int)
-    signal_toggle_reference_curve_request = qtc.Signal(
-        object)  # it is a list or a NoneType
+
+    signal_reference_curve_activate = qtc.Signal(int)
+    signal_reference_curve_deactivate = qtc.Signal(int)
+    signal_reference_curve_successful = qtc.Signal(int)
+
     # signal_add_line_request = qtc.Signal(list, object)  # failed to pass all the args and kwargs
     # in an elegant way
 
@@ -250,6 +256,10 @@ class CurveAnalyze(qtw.QMainWindow):
             self.remove_curves()
         if keyEvent.matches(qtg.QKeySequence.Cancel):
             self.qlistwidget_for_curves.setCurrentRow(-1)
+        if keyEvent.matches(qtg.QKeySequence.Paste):
+            self.import_single_curve()
+        if keyEvent.matches(qtg.QKeySequence.Copy):
+            self._export_curve()
 
     def _create_core_objects(self):
         # a dictionary of QWidgets that users interact with
@@ -281,10 +291,10 @@ class CurveAnalyze(qtw.QMainWindow):
             {
                 "import_curve": "Import curve",
                 "import_table": "Import table",
-                "auto_import": "Auto import",
+                # "auto_import": "Auto import",
                 "reset_indexes": "Reset indexes",
                 "reset_colors": "Reset colors",
-                "remove": "Remove",
+                "remove": "| Remove |",
                 "rename": "Rename",
                 "move_up": "Move up",
                 "move_to_top": "Move to top",
@@ -295,14 +305,24 @@ class CurveAnalyze(qtw.QMainWindow):
                 "export_curve": "Export curve",
             },
             {"import_curve": "Import 2D curve from clipboard",
-             "auto_import": "Attempt an import whenever new data is found on the clipboard.",
+             # "auto_import": "Attempt an import whenever new data is found on the clipboard.",
              },
         )
+
+        # Create a palette
+        palette = qtg.QPalette()
+
+        # Set the button text color to red
+        palette.setColor(qtg.QPalette.ButtonText, qtg.QColor(190, 70, 70))
+
+        # Apply the palette to the button
+        self.graph_buttons.buttons()["remove_pushbutton"].setPalette(palette)
+
         # Add the widgets that users interact with into the dictionary
         self.graph_buttons.add_elements_to_dict(self._interactable_widgets)
 
         # ---- Set types and states for buttons
-        self._interactable_widgets["auto_import_pushbutton"].setCheckable(True)
+        # self._interactable_widgets["auto_import_pushbutton"].setCheckable(True)
         self._interactable_widgets["set_reference_pushbutton"].setCheckable(
             True)
 
@@ -344,10 +364,10 @@ class CurveAnalyze(qtw.QMainWindow):
             self.show_curves)
         self._interactable_widgets["export_curve_pushbutton"].clicked.connect(
             self._export_curve)
-        self._interactable_widgets["auto_import_pushbutton"].toggled.connect(
-            self._auto_importer_status_toggle)
+        # self._interactable_widgets["auto_import_pushbutton"].toggled.connect(
+        #     self._auto_importer_status_toggle)
         self._interactable_widgets["set_reference_pushbutton"].toggled.connect(
-            self.reference_curve_status_toggle)
+            self.reference_curve_button_toggled)
         self._interactable_widgets["processing_pushbutton"].clicked.connect(
             self.open_processing_dialog)
         self._interactable_widgets["import_curve_pushbutton"].clicked.connect(
@@ -355,35 +375,84 @@ class CurveAnalyze(qtw.QMainWindow):
         self._interactable_widgets["import_table_pushbutton"].clicked.connect(
             self._import_table_clicked)
 
-        # ---- Double click for highlighting/flashing a curve
-        self.qlistwidget_for_curves.itemActivated.connect(self._flash_curve)
+        # ---- Double click for highlighting a curve
+        self.qlistwidget_for_curves.itemActivated.connect(self.toggle_highlight)
 
         # ---- Signals to Matplolib graph
-        # self.signal_update_figure_request.connect(self.graph.update_figure)
         self.signal_reposition_curves_request.connect(
             self.graph.change_lines_order)
-        self.signal_flash_curve_request.connect(self.graph.flash_curve)
         self.signal_update_labels_request.connect(
             self.graph.update_labels_and_visibilities)
         self.signal_reset_colors_request.connect(self.graph.reset_colors)
         self.signal_remove_curves_request.connect(
             self.graph.remove_multiple_line2d)
-        self.signal_toggle_reference_curve_request.connect(
-            self.graph.toggle_reference_curve)
+
+        self.signal_reference_curve_activate.connect(
+            self.graph.activate_reference_curve)
+        self.signal_reference_curve_deactivate.connect(
+            self.graph.deactivate_reference_curve)
         # self.signal_add_line_request.connect(self.graph.add_line2d)
         # self.signal_update_visibility_request.connect(self.graph.update_labels_and_visibilities)
 
         # ---- Signals from Matplotlib graph
         self.graph.signal_good_beep.connect(self.signal_good_beep)
         self.graph.signal_bad_beep.connect(self.signal_bad_beep)
-        self.graph.signal_is_reference_curve_active.connect(
-            self._interactable_widgets["set_reference_pushbutton"].setChecked)
 
-        # Disable some buttons when there is a reference curve active
-        self.graph.signal_is_reference_curve_active.connect(
-            lambda x: self._interactable_widgets["processing_pushbutton"].setEnabled(not x))
-        self.graph.signal_is_reference_curve_active.connect(
-            lambda x: self._interactable_widgets["export_curve_pushbutton"].setEnabled(not x))
+        # Reference curve
+        # activated
+        self.graph.signal_reference_curve_activated.connect(
+            lambda: self._interactable_widgets["set_reference_pushbutton"].setChecked(True))
+        self.graph.signal_reference_curve_activated.connect(
+            lambda: self._interactable_widgets["processing_pushbutton"].setEnabled(False))
+        self.graph.signal_reference_curve_activated.connect(
+            lambda: self._interactable_widgets["export_curve_pushbutton"].setEnabled(False))
+        # self.graph.signal_reference_curve_activated.connect(
+        #     lambda: self._interactable_widgets["move_up_pushbutton"].setEnabled(False))
+        # self.graph.signal_reference_curve_activated.connect(
+        #     lambda: self._interactable_widgets["move_to_top_pushbutton"].setEnabled(False))
+        # self.graph.signal_reference_curve_activated.connect(
+        #     lambda: self._interactable_widgets["reset_indexes_pushbutton"].setEnabled(False))
+        # self.graph.signal_reference_curve_activated.connect(
+        #     lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(False))
+        self.graph.signal_reference_curve_activated.connect(
+            self.reference_curve_activate_successful_actions)
+
+
+        # deactivated
+        self.graph.signal_reference_curve_deactivated.connect(
+            lambda: self._interactable_widgets["set_reference_pushbutton"].setChecked(False))
+        self.graph.signal_reference_curve_deactivated.connect(
+            lambda: self._interactable_widgets["processing_pushbutton"].setEnabled(True))
+        self.graph.signal_reference_curve_deactivated.connect(
+            lambda: self._interactable_widgets["export_curve_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_deactivated.connect(
+        #     lambda: self._interactable_widgets["move_up_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_deactivated.connect(
+        #     lambda: self._interactable_widgets["move_to_top_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_deactivated.connect(
+        #     lambda: self._interactable_widgets["reset_indexes_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_deactivated.connect(
+        #     lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(True))
+        self.graph.signal_reference_curve_deactivated.connect(
+            self.reference_curve_deactivated_actions)
+
+        # failed
+        self.graph.signal_reference_curve_failed.connect(
+            lambda: self._interactable_widgets["set_reference_pushbutton"].setChecked(False))
+        self.graph.signal_reference_curve_failed.connect(
+            lambda: self._interactable_widgets["processing_pushbutton"].setEnabled(True))
+        self.graph.signal_reference_curve_failed.connect(
+            lambda: self._interactable_widgets["export_curve_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_failed.connect(
+        #     lambda: self._interactable_widgets["move_up_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_failed.connect(
+        #     lambda: self._interactable_widgets["move_to_top_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_failed.connect(
+        #     lambda: self._interactable_widgets["reset_indexes_pushbutton"].setEnabled(True))
+        # self.graph.signal_reference_curve_failed.connect(
+        #     lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(True))
+        self.graph.signal_reference_curve_failed.connect(self.signal_bad_beep)
+        self.graph.signal_reference_curve_failed.connect(lambda x: pwi.ErrorPopup(x, self))
 
         # Import table dialog good/bad beeps
         self.signal_table_import_successful.connect(self.signal_good_beep)
@@ -394,20 +463,14 @@ class CurveAnalyze(qtw.QMainWindow):
         if self.return_false_and_beep_if_no_curve_selected():
             return
         elif len(self.qlistwidget_for_curves.selectedItems()) > 1:
-            message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
-                                          "Feature not Implemented",
-                                          "Can only export one curve at a time.",
-                                          )
-            message_box.setStandardButtons(qtw.QMessageBox.Ok)
-            message_box.exec()
-            return
+            error_message = "Can only export one curve at a time."
+            pwi.ErrorPopup(error_message, self)
         else:
             curve = self.get_selected_curves()[0]
-        
-        curve.export_to_clipboard(ppo=settings.export_ppo,
-                                  must_include_freq=settings.interpolate_must_contain_hz,
-                                  )
-        self.signal_good_beep.emit()
+            curve.export_to_clipboard(ppo=settings.export_ppo,
+                                      must_include_freq=settings.interpolate_must_contain_hz,
+                                      )
+            self.signal_good_beep.emit()
 
     def _get_curve_from_clipboard(self):
         """Read a signal_tools.Curve object from clipboard."""
@@ -471,9 +534,9 @@ class CurveAnalyze(qtw.QMainWindow):
             # update the QListWidget
             new_list_item = qtw.QListWidgetItem(curve.get_full_name())
             if not curve.is_visible():
-                font = new_list_item.font()
-                font.setWeight(qtg.QFont.Thin)
-                new_list_item.setFont(font)
+                self.set_qitem_font(new_list_item, "thin")
+            if curve.is_highlighted():
+                self.set_qitem_font(new_list_item, "bold")
 
             self.qlistwidget_for_curves.insertItem(i_after, new_list_item)
             self.qlistwidget_for_curves.takeItem(i_before + 1)
@@ -491,7 +554,12 @@ class CurveAnalyze(qtw.QMainWindow):
     def move_up_1(self):
         if self.return_false_and_beep_if_no_curve_selected():
             return
+
         selected_indexes = self.get_selected_curve_indexes()
+        # if any([self.curves[index].is_reference() for index in selected_indexes]):
+        #     pwi.ErrorPopup("Cannot move active reference curve.", self)
+        #     return
+
         i_insert = max(0, selected_indexes[0] - 1)
         self._move_curve_up(i_insert)
         if len(selected_indexes) == 1:
@@ -500,6 +568,12 @@ class CurveAnalyze(qtw.QMainWindow):
     def move_to_top(self):
         if self.return_false_and_beep_if_no_curve_selected():
             return
+
+        # selected_indexes = self.get_selected_curve_indexes()
+        # if any([self.curves[index].is_reference() for index in selected_indexes]):
+        #     pwi.ErrorPopup("Cannot move active reference curve.", self)
+        #     return
+
         self._move_curve_up(0)
         self.qlistwidget_for_curves.setCurrentRow(-1)
 
@@ -514,7 +588,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 curve.set_name_prefix(f"#{i:02d}")
                 self.qlistwidget_for_curves.item(
                     i).setText(curve.get_full_name())
-                new_labels[i] = (curve.get_full_name(), curve.is_visible())
+                new_labels[i] = (curve.get_full_name(), curve.is_visible(), curve.is_highlighted(), curve.is_reference())
 
             self.signal_update_labels_request.emit(new_labels)
 
@@ -566,7 +640,7 @@ class CurveAnalyze(qtw.QMainWindow):
             curve.set_name_base(text)
             list_item = self.qlistwidget_for_curves.item(index)
             list_item.setText(curve.get_full_name())
-            new_labels[index] = (curve.get_full_name(), curve.is_visible())
+            new_labels[index] = (curve.get_full_name(), curve.is_visible(), curve.is_highlighted(), curve.is_reference())
 
         self.graph.update_labels_and_visibilities(new_labels)
 
@@ -608,6 +682,10 @@ class CurveAnalyze(qtw.QMainWindow):
                 return
             else:
                 indexes_to_remove = self.get_selected_curve_indexes()
+
+        if any([self.curves[index].is_reference() for index in indexes_to_remove]):
+            pwi.ErrorPopup("Cannot move active reference curve.", self)
+            return
 
         for i in sorted(indexes_to_remove, reverse=True):
             self.qlistwidget_for_curves.takeItem(i)
@@ -767,58 +845,69 @@ class CurveAnalyze(qtw.QMainWindow):
         else:
             self.auto_importer.requestInterruption()
 
-    def reference_curve_status_toggle(self, checked: bool):
+    def reference_curve_activate_successful_actions(self, i_ref_curve):
+        curve = self.curves[i_ref_curve]
+
+        # mark it as reference
+        curve.add_name_suffix("reference")
+        curve.set_reference(True)
+
+        # Update the names in qlist widget
+        reference_item = self.qlistwidget_for_curves.item(i_ref_curve)
+        reference_item.setText(curve.get_full_name())
+
+    def reference_curve_deactivated_actions(self):
         """
-        Reference curve is marked in the Curve class instances with "_visible"
-        Also in the graph object, there is an attribute to store if there is a reference and if so which one it is.
+        Reference curve deactivated or failed to activate.
         """
-        if checked:
-            # Block precessing options
-            indexes_and_curves = self.get_selected_curves(as_dict=True)
-            if len(indexes_and_curves) == 1:
-                self._interactable_widgets["processing_pushbutton"].setEnabled(
-                    False)
-                index, curve = list(indexes_and_curves.items())[0]
-
-                # mark it as reference
-                curve.add_name_suffix("reference")
-                curve.set_reference(True)
-
-                # Update the names in qlist widget
-                reference_item = self.qlistwidget_for_curves.item(index)
-                reference_item.setText(curve.get_full_name())
-
-                # Update graph
-                self.signal_toggle_reference_curve_request.emit([index, curve])
-
-            else:
-                # multiple selections
-                self._interactable_widgets["set_reference_pushbutton"].setChecked(
-                    False)
-                self.signal_bad_beep.emit()
-
-        elif not checked:
-            # find back the reference curve
-            reference_curves = [(index, curve) for index, curve in enumerate(
-                self.curves) if curve.is_reference()]
-            if len(reference_curves) == 0:
-                pass
-            elif len(reference_curves) > 1:
-                raise ValueError(
-                    "Multiple reference curves are in the list somehow..")
-            else:
-                index, curve = reference_curves[0]
-
+        for i, curve in enumerate(self.curves):
+            if curve.is_reference():
                 # revert it
                 curve.remove_name_suffix("reference")
                 curve.set_reference(False)
 
-                # Update the names in list
-                reference_item = self.qlistwidget_for_curves.item(index)
+                # Update the name in list
+                reference_item = self.qlistwidget_for_curves.item(i)
                 reference_item.setText(curve.get_full_name())
 
+    def reference_curve_button_toggled(self, checked: bool):
+        """
+        Reference curve is marked in the Curve class instances with "_visible"
+        Also in the graph object, there is an attribute to store if there is a reference and if so which one it is.
+        """
+        if checked:  # activate
+            # Disable processing button
+            indexes_and_curves = self.get_selected_curves(as_dict=True)
+            if len(indexes_and_curves) == 1:
+                i_ref_curve, curve = list(indexes_and_curves.items())[0]
+                curve_new = deepcopy(curve)
+                curve_new.set_reference(True)
+                self.update_curve_states({i_ref_curve: curve_new},
+                                         update_figure=False,
+                                         )
+                self.signal_reference_curve_activate.emit(i_ref_curve)
+
+            else:
+                # multiple selection
+                self.reference_curve_deactivated_actions()
+                self.signal_bad_beep.emit()
+
+        elif not checked:  # deactivate
+            # find back the reference curve
+            reference_curves = [(i_ref_curve, curve) for i_ref_curve, curve in enumerate(self.curves) if curve.is_reference()]
+            if len(reference_curves) == 0:
+                pass
+            elif len(reference_curves) > 1:
+                raise RuntimeError("Multiple reference curves are in the list somehow..")
+            else:
+                i_ref_curve, curve = reference_curves[0]
+                curve_new = deepcopy(curve)
+                curve_new.set_reference(False)
                 # Update graph
-                self.signal_toggle_reference_curve_request.emit(None)
+                self.update_curve_states({i_ref_curve: curve_new},
+                                         update_figure=False,
+                                         )
+                self.signal_reference_curve_deactivate.emit(i_ref_curve)
 
     def _add_single_curve(self, i_insert: int, curve: signal_tools.Curve, update_figure: bool = True,
                           line2d_kwargs={},
@@ -839,7 +928,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 self.qlistwidget_for_curves.addItem(list_item)
 
                 self.graph.add_line2d(i_max, curve.get_full_name(), curve.get_xy(),
-                                      update_figure=update_figure, line2d_kwargs=line2d_kwargs,
+                                      update_figure=update_figure, line2d_kwargs={"alpha": 0.9, **line2d_kwargs},
                                       )
 
                 return i_max
@@ -857,11 +946,29 @@ class CurveAnalyze(qtw.QMainWindow):
                 self.qlistwidget_for_curves.insertItem(i_insert, list_item)
 
                 self.graph.add_line2d(i_insert, curve.get_full_name(), curve.get_xy(
-                ), update_figure=update_figure, line2d_kwargs=line2d_kwargs)
+                ), update_figure=update_figure, line2d_kwargs={"alpha": 0.9, **line2d_kwargs})
 
                 return i_insert
         else:
             raise ValueError("Invalid curve")
+
+
+    def set_qitem_font(self, item: QListWidgetItem, set_to: str) -> None:
+        """
+        Set font type for a list item.
+        """
+        font = item.font()
+        match set_to:
+            case "normal":
+                font.setWeight(qtg.QFont.Normal)
+            case "thin":
+                font.setWeight(qtg.QFont.Thin)
+            case "bold":
+                font.setWeight(qtg.QFont.Bold)
+            case _:
+                return
+
+        item.setFont(font)
 
     def hide_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
@@ -871,14 +978,18 @@ class CurveAnalyze(qtw.QMainWindow):
         else:
             indexes_and_curves = self.get_selected_curves(as_dict=True)
 
+        if any([curve.is_reference() for _, curve in indexes_and_curves.items()]):
+            pwi.ErrorPopup("Cannot modify active reference curve.", self)
+            return
+
         for index, curve in indexes_and_curves.items():
             item = self.qlistwidget_for_curves.item(index)
-            font = item.font()
-            font.setWeight(qtg.QFont.Thin)
-            item.setFont(font)
-            curve.set_visible(False)
 
-        self.update_visibilities_of_graph_curves(indexes_and_curves)
+            self.set_qitem_font(item, "thin")
+            curve.set_visible(False)
+            curve.set_highlighted(False)
+
+        self.update_curve_states(indexes_and_curves)
 
     def show_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
@@ -888,29 +999,49 @@ class CurveAnalyze(qtw.QMainWindow):
         else:
             indexes_and_curves = self.get_selected_curves(as_dict=True)
 
+        if any([curve.is_reference() for _, curve in indexes_and_curves.items()]):
+            pwi.ErrorPopup("Cannot modify active reference curve.", self)
+            return
+
         for index, curve in indexes_and_curves.items():
             item = self.qlistwidget_for_curves.item(index)
-            font = item.font()
-            font.setWeight(qtg.QFont.Normal)
-            item.setFont(font)
 
+            self.set_qitem_font(item, "normal")
             curve.set_visible(True)
+            curve.set_highlighted(False)
 
-        self.update_visibilities_of_graph_curves(indexes_and_curves)
+        self.update_curve_states(indexes_and_curves)
 
-    def _flash_curve(self, item: qtw.QListWidgetItem):
+    def toggle_highlight(self, item: qtw.QListWidgetItem):
         index = self.qlistwidget_for_curves.row(item)
-        self.signal_flash_curve_request.emit(index)
+        curve = self.curves[index]
 
-    def update_visibilities_of_graph_curves(self, indexes_and_curves=None, update_figure=True):
+        if curve.is_reference():
+            pwi.ErrorPopup("Cannot change highlight state of active reference curve.", self)
+            return
+
+        if curve.is_visible() is False or curve.is_highlighted() is True:
+            self.show_curves([index])
+        elif curve.is_visible() is True and curve.is_highlighted() is False:
+            curve.set_highlighted(True)
+            self.set_qitem_font(item, "bold")
+
+        self.update_curve_states(indexes_and_curves={index: curve})
+
+    def update_curve_states(self, indexes_and_curves=None, update_figure=True):
+        # 4 states exist
+        # reference, 0.1 alpha, not shown on legend
+        # highlighted, 1.0 alpha
+        # normal shown, 0.9 alpha
+        # hidden, 0.1 alpha, not shown on legend
+
         if not indexes_and_curves:
-            visibility_states = {i: (None, curve.is_visible())
+            curve_states = {i: (None, curve.is_visible(), curve.is_highlighted(), curve.is_reference())
                                  for i, curve in enumerate(self.curves)}
         else:
-            visibility_states = {i: (None, curve.is_visible())
+            curve_states = {i: (None, curve.is_visible(), curve.is_highlighted(), curve.is_reference())
                                  for i, curve in indexes_and_curves.items()}
-        self.graph.update_labels_and_visibilities(
-            visibility_states, update_figure=update_figure)
+        self.graph.update_labels_and_visibilities(curve_states, update_figure=update_figure)
 
     def open_processing_dialog(self):
         if self.return_false_and_beep_if_no_curve_selected():
@@ -1009,6 +1140,9 @@ class CurveAnalyze(qtw.QMainWindow):
         result_text += "\n\n"
         result_text += tabulate(df[["Average values"]],
                                 headers=("Item name", "Average"), floatfmt=(".2f"))
+        result_text += "\n"
+        result_text += f"\nMedian of averages: {df[["Average values"]].median().values[0]:.2f}"
+        result_text += f"\nMean of averages:   {df[["Average values"]].mean().values[0]:.2f}"
 
         return {"title": "Average values", "result_text": result_text}
 
@@ -1107,12 +1241,10 @@ class CurveAnalyze(qtw.QMainWindow):
     def _show_best_fits(self):
         selected_curves = self.get_selected_curves(as_dict=True)
         if len(selected_curves) != 1:
-            warning = qtw.QMessageBox(qtw.QMessageBox.Warning,
-                                      "Multiple curves found in selection",
-                                      "For this operation you need to choose a single curve from the list.",
-                                      qtw.QMessageBox.Ok,
-                                      )
-            warning.exec()
+            error_message = ("Multiple curves found in selection."
+                            "\nTo find best fit to a curve, you need to choose a single curve from the list first."
+                             )
+            pwi.ErrorPopup(error_message, self)
             return {}
 
         else:
@@ -1168,7 +1300,7 @@ class CurveAnalyze(qtw.QMainWindow):
             result_text += tabulate(
                 df[["Standard deviation of weighted residuals"]], headers=("Item name", "Swr"))
 
-        return {"title": "Best fits", "result_text": result_text}
+            return {"title": "Best fits", "result_text": result_text}
 
     def _interpolate_curves(self):
         selected_curves = self.get_selected_curves(as_dict=True)
@@ -1257,13 +1389,6 @@ class CurveAnalyze(qtw.QMainWindow):
         self.graph.update_figure(recalculate_limits=False)
         self.signal_good_beep.emit()
 
-    def _not_implemented_popup(self):
-        message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
-                                      "Feature not Implemented",
-                                      )
-        message_box.setStandardButtons(qtw.QMessageBox.Ok)
-        message_box.exec()
-
     def open_about_menu(self):
         result_text = "\n".join([
             "Linecraft - Frequency response display and statistics tool",
@@ -1319,6 +1444,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
         def collect_curve_info(curve):
             curve_info = {"visible": curve.is_visible(),
+                          "highlighted": curve.is_highlighted(),
                           "identification": curve._identification,
                           "x": tuple(curve.get_x()),
                           "y": tuple(curve.get_y()),
@@ -1327,7 +1453,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
         lines_info = []
         curves_info = []
-        for line, curve in zip(self.graph.get_lines_in_user_defined_order(), self.curves):
+        for line, curve in zip(self.graph.get_lines_in_qlist_order(), self.curves):
             lines_info.append(collect_line2d_info(line))
             curves_info.append(collect_curve_info(curve))
 
@@ -1357,12 +1483,13 @@ class CurveAnalyze(qtw.QMainWindow):
         for line_info, curve_info in zip(lines_info, curves_info):
             curve = signal_tools.Curve((curve_info["x"], curve_info["y"]))
             curve.set_visible(curve_info["visible"])
+            curve.set_highlighted(curve_info.get("highlighted", False))
             curve._identification = curve_info["identification"]
 
             self._add_single_curve(
                 None, curve, update_figure=False, line2d_kwargs=line_info)
 
-        self.update_visibilities_of_graph_curves(update_figure=False)
+        self.update_curve_states(update_figure=False)
         self.graph.update_figure(recalculate_limits=False)
 
     def save_state_to_file(self):
@@ -1377,10 +1504,11 @@ class CurveAnalyze(qtw.QMainWindow):
         try:
             file_raw = path_unverified[0]
             if file_raw:  # if we received a string
+                file = Path(file_raw)
                 # Filter not working as expected in nautilus. Saves files without including the extension.
                 # Therefore added this seciton.
-                file = Path(
-                    file_raw + ".lc" if file_raw[-3:] != ".lc" else file_raw)
+                if file.suffix != ".lc":
+                    file = file.with_suffix(".lc")
                 assert file.parent.exists()
             else:
                 return  # nothing was selected, pick file canceled
@@ -1704,8 +1832,7 @@ class ProcessingDialog(qtw.QDialog):
 
     def _save_and_close(self):
         active_tab_index = self.tab_widget.currentIndex()
-        user_form, processing_function_name = self.user_forms_and_recipient_functions[
-            active_tab_index]
+        user_form, processing_function_name = self.user_forms_and_recipient_functions[active_tab_index]
         settings.update("processing_selected_tab",
                         self.tab_widget.currentIndex())
 
@@ -1993,7 +2120,7 @@ class AutoImporter(qtc.QThread):
     def run(self):
         while not self.isInterruptionRequested():
             try:
-                cb_data = pyperclip.waitForNewPaste(1)
+                cb_data = pyperclip.waitForPaste(1)
                 # print("\nClipboard read:" + "\n" + str(type(cb_data)) + "\n" + cb_data)
                 new_curve = signal_tools.Curve(cb_data)
                 if new_curve.is_curve():
@@ -2002,6 +2129,17 @@ class AutoImporter(qtc.QThread):
                 pass
             except Exception as e:
                 logger.warning(e)
+
+
+def get_main_dir():
+    
+    if getattr(sys, 'frozen', False):
+        # The application is frozen
+        return Path(sys.executable).parent
+        
+    else:
+        # The application is not frozen
+        return Path(__file__).parent
 
 
 def parse_args(app_definitions):
@@ -2034,7 +2172,7 @@ def create_sound_engine(app):
     sound_engine.moveToThread(sound_engine_thread)
 
     # Connect
-    app.aboutToQuit.connect(sound_engine.release_all)
+    # app.aboutToQuit.connect(sound_engine.release_all)
     app.aboutToQuit.connect(sound_engine_thread.quit)
 
     sound_engine_thread.start(qtc.QThread.HighPriority)
@@ -2081,10 +2219,11 @@ def main():
         app = qtw.QApplication(sys.argv)
         # there is a new recommendation with qApp but how to do the sys.argv with that?
         # app.setQuitOnLastWindowClosed(True)  # is this necessary??
-        app.setWindowIcon(qtg.QIcon(app_definitions["icon_path"]))
+        icon_path = str(get_main_dir().joinpath(app_definitions["icon_path"]))
+        app.setWindowIcon(qtg.QIcon(icon_path))
 
     # ---- Catch exceptions and handle with pop-up widget
-    error_handler = pwi.ErrorHandlerUser(app, logger)
+    error_handler = pwi.ErrorHandler(logger, developer=False)
     sys.excepthook = error_handler.excepthook
 
     # ---- Create sound engine
@@ -2094,7 +2233,7 @@ def main():
     mw = CurveAnalyze()
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
-
+    # mw.add_state_from_file("Test apps/test.lc")
     # ---- Are we loading a state file?
     if args.infile:
         logger.info(
