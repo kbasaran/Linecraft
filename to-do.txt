@@ -14,6 +14,4 @@ add action when a line is picked
 
 pyperclip.waitforpaste is broken. disabled the button temmporarily.
 
-hiding while a reference is set is buggy
-
 y limits for thd curves makes no sense. 0 is not in there.
