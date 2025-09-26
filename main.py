@@ -1017,12 +1017,17 @@ class CurveAnalyze(qtw.QMainWindow):
         curve = self.curves[index]
 
         if curve.is_reference():
-            pwi.ErrorPopup("Cannot change highlight state of active reference curve.", self)
+            pwi.ErrorPopup(self,"Cannot change highlight state of active reference curve.")
             return
 
-        if curve.is_visible() is False or curve.is_highlighted() is True:
-            self.show_curves([index])
-        elif curve.is_visible() is True and curve.is_highlighted() is False:
+        if curve.is_highlighted() is True:
+            if curve.is_visible():
+                self.set_qitem_font(item, "normal")
+            else:
+                self.set_qitem_font(item, "thin")
+            curve.set_highlighted(False)
+
+        elif curve.is_highlighted() is False:
             curve.set_highlighted(True)
             self.set_qitem_font(item, "bold")
 
