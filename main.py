@@ -452,7 +452,7 @@ class CurveAnalyze(qtw.QMainWindow):
         # self.graph.signal_reference_curve_failed.connect(
         #     lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(True))
         self.graph.signal_reference_curve_failed.connect(self.signal_bad_beep)
-        self.graph.signal_reference_curve_failed.connect(lambda x: pwi.ErrorPopup(x, self))
+        self.graph.signal_reference_curve_failed.connect(lambda x: pwi.ErrorPopup(self, x))
 
         # Import table dialog good/bad beeps
         self.signal_table_import_successful.connect(self.signal_good_beep)
@@ -464,7 +464,7 @@ class CurveAnalyze(qtw.QMainWindow):
             return
         elif len(self.qlistwidget_for_curves.selectedItems()) > 1:
             error_message = "Can only export one curve at a time."
-            pwi.ErrorPopup(error_message, self)
+            pwi.ErrorPopup(self, error_message)
         else:
             curve = self.get_selected_curves()[0]
             curve.export_to_clipboard(ppo=settings.export_ppo,
@@ -557,7 +557,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
         selected_indexes = self.get_selected_curve_indexes()
         # if any([self.curves[index].is_reference() for index in selected_indexes]):
-        #     pwi.ErrorPopup("Cannot move active reference curve.", self)
+        #     pwi.ErrorPopup(self, "Cannot move active reference curve.")
         #     return
 
         i_insert = max(0, selected_indexes[0] - 1)
@@ -571,7 +571,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
         # selected_indexes = self.get_selected_curve_indexes()
         # if any([self.curves[index].is_reference() for index in selected_indexes]):
-        #     pwi.ErrorPopup("Cannot move active reference curve.", self)
+        #     pwi.ErrorPopup(self, "Cannot move active reference curve.")
         #     return
 
         self._move_curve_up(0)
@@ -684,7 +684,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 indexes_to_remove = self.get_selected_curve_indexes()
 
         if any([self.curves[index].is_reference() for index in indexes_to_remove]):
-            pwi.ErrorPopup("Cannot move active reference curve.", self)
+            pwi.ErrorPopup(self,"Cannot move active reference curve.")
             return
 
         for i in sorted(indexes_to_remove, reverse=True):
@@ -979,7 +979,7 @@ class CurveAnalyze(qtw.QMainWindow):
             indexes_and_curves = self.get_selected_curves(as_dict=True)
 
         if any([curve.is_reference() for _, curve in indexes_and_curves.items()]):
-            pwi.ErrorPopup("Cannot modify active reference curve.", self)
+            pwi.ErrorPopup(self,"Cannot modify active reference curve.")
             return
 
         for index, curve in indexes_and_curves.items():
@@ -987,7 +987,6 @@ class CurveAnalyze(qtw.QMainWindow):
 
             self.set_qitem_font(item, "thin")
             curve.set_visible(False)
-            curve.set_highlighted(False)
 
         self.update_curve_states(indexes_and_curves)
 
@@ -1000,7 +999,7 @@ class CurveAnalyze(qtw.QMainWindow):
             indexes_and_curves = self.get_selected_curves(as_dict=True)
 
         if any([curve.is_reference() for _, curve in indexes_and_curves.items()]):
-            pwi.ErrorPopup("Cannot modify active reference curve.", self)
+            pwi.ErrorPopup(self, "Cannot modify active reference curve.")
             return
 
         for index, curve in indexes_and_curves.items():
@@ -1008,7 +1007,6 @@ class CurveAnalyze(qtw.QMainWindow):
 
             self.set_qitem_font(item, "normal")
             curve.set_visible(True)
-            curve.set_highlighted(False)
 
         self.update_curve_states(indexes_and_curves)
 
@@ -1249,7 +1247,7 @@ class CurveAnalyze(qtw.QMainWindow):
             error_message = ("Multiple curves found in selection."
                             "\nTo find best fit to a curve, you need to choose a single curve from the list first."
                              )
-            pwi.ErrorPopup(error_message, self)
+            pwi.ErrorPopup(self, error_message)
             return {}
 
         else:
@@ -2227,9 +2225,6 @@ def main():
         icon_path = str(get_main_dir().joinpath(app_definitions["icon_path"]))
         app.setWindowIcon(qtg.QIcon(icon_path))
 
-    # ---- Catch exceptions and handle with pop-up widget
-    error_handler = pwi.ErrorHandler(logger, developer=False)
-    sys.excepthook = error_handler.excepthook
 
     # ---- Create sound engine
     sound_engine, sound_engine_thread = create_sound_engine(app)
@@ -2238,7 +2233,14 @@ def main():
     mw = CurveAnalyze()
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
-    # mw.add_state_from_file("Test apps/test.lc")
+    mw.add_state_from_file("Test apps/test.lc")
+
+
+    # ---- Catch exceptions and handle with pop-up widget
+    error_handler = pwi.ErrorHandler(mw, logger, developer=False)
+    sys.excepthook = error_handler.excepthook
+
+
     # ---- Are we loading a state file?
     if args.infile:
         logger.info(
