@@ -73,8 +73,8 @@ class Settings:
     A_beep: float = 0.25
     show_legend: bool = True
     max_legend_size: int = 7
-    import_ppo: int = 96
-    export_ppo: int = 96
+    import_ppo: int = 48
+    export_ppo: int = 48
     matplotlib_style: str = "ggplot"
     interpolate_must_contain_hz: int = 1000
     graph_grids: str = "Major and minor"
