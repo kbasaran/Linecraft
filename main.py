@@ -58,7 +58,7 @@ app_definitions = {"app_name": "Linecraft",
                    }
 
 # uncomment for release candidate builds
-app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
+# app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 @dataclass
 class Settings:
@@ -2232,11 +2232,11 @@ def main():
     mw = CurveAnalyze()
     mw.signal_bad_beep.connect(sound_engine.bad_beep)
     mw.signal_good_beep.connect(sound_engine.good_beep)
-    mw.add_state_from_file("Test apps/test.lc")
+    # mw.add_state_from_file("Test apps/test.lc")
 
 
     # ---- Catch exceptions and handle with pop-up widget
-    error_handler = pwi.ErrorHandler(mw, logger, developer=True)
+    error_handler = pwi.ErrorHandler(mw, logger, developer=False)
     sys.excepthook = error_handler.excepthook
 
 
