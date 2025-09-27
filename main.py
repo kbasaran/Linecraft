@@ -849,7 +849,6 @@ class CurveAnalyze(qtw.QMainWindow):
         curve = self.curves[i_ref_curve]
 
         # mark it as reference
-        curve.add_name_suffix("reference")
         curve.set_reference(True)
 
         # Update the names in qlist widget
@@ -863,7 +862,6 @@ class CurveAnalyze(qtw.QMainWindow):
         for i, curve in enumerate(self.curves):
             if curve.is_reference():
                 # revert it
-                curve.remove_name_suffix("reference")
                 curve.set_reference(False)
 
                 # Update the name in list
@@ -878,36 +876,37 @@ class CurveAnalyze(qtw.QMainWindow):
         if checked:  # activate
             # Disable processing button
             indexes_and_curves = self.get_selected_curves(as_dict=True)
-            if len(indexes_and_curves) == 1:
-                i_ref_curve, curve = list(indexes_and_curves.items())[0]
-                curve_new = deepcopy(curve)
-                curve_new.set_reference(True)
-                self.update_curve_states({i_ref_curve: curve_new},
-                                         update_figure=False,
-                                         )
-                self.signal_reference_curve_activate.emit(i_ref_curve)
-
-            else:
+            if len(indexes_and_curves) != 1:
                 # multiple selection
                 self.reference_curve_deactivated_actions()
                 self.signal_bad_beep.emit()
+                return
+
+            i_ref_curve, curve = list(indexes_and_curves.items())[0]
+            curve_new = deepcopy(curve)
+            curve_new.set_reference(True)
+            self.update_curve_states({i_ref_curve: curve_new},
+                                     update_figure=False,
+                                     )
+            self.signal_reference_curve_activate.emit(i_ref_curve)
+
 
         elif not checked:  # deactivate
             # find back the reference curve
             reference_curves = [(i_ref_curve, curve) for i_ref_curve, curve in enumerate(self.curves) if curve.is_reference()]
             if len(reference_curves) == 0:
-                pass
-            elif len(reference_curves) > 1:
+                return
+            if len(reference_curves) > 1:
                 raise RuntimeError("Multiple reference curves are in the list somehow..")
-            else:
-                i_ref_curve, curve = reference_curves[0]
-                curve_new = deepcopy(curve)
-                curve_new.set_reference(False)
-                # Update graph
-                self.update_curve_states({i_ref_curve: curve_new},
-                                         update_figure=False,
-                                         )
-                self.signal_reference_curve_deactivate.emit(i_ref_curve)
+
+            i_ref_curve, ref_curve = reference_curves[0]
+            curve_new = deepcopy(ref_curve)
+            curve_new.set_reference(False)
+            # Update graph
+            self.update_curve_states({i_ref_curve: curve_new},
+                                     update_figure=False,
+                                     )
+            self.signal_reference_curve_deactivate.emit(i_ref_curve)
 
     def _add_single_curve(self, i_insert: int, curve: signal_tools.Curve, update_figure: bool = True,
                           line2d_kwargs={},
@@ -2237,7 +2236,7 @@ def main():
 
 
     # ---- Catch exceptions and handle with pop-up widget
-    error_handler = pwi.ErrorHandler(mw, logger, developer=False)
+    error_handler = pwi.ErrorHandler(mw, logger, developer=True)
     sys.excepthook = error_handler.excepthook
 
 
