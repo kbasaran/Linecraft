@@ -17,5 +17,3 @@ pyperclip.waitforpaste is broken. disabled the button temmporarily.
 y limits for thd curves makes no sense. 0 is not in there.
 
 improve error handling in processing with invalid curve selections
-
-make hide/show and highlight independent or give more function to double click

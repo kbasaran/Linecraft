@@ -47,7 +47,7 @@ import time
 from generictools.signal_tools import curve_summation
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.4.1",
+                   "version": "0.4.2",
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
                    "icon_path": "logo/icon.ico",  # relative posix path
@@ -885,9 +885,9 @@ class CurveAnalyze(qtw.QMainWindow):
             i_ref_curve, curve = list(indexes_and_curves.items())[0]
             curve_new = deepcopy(curve)
             curve_new.set_reference(True)
-            self.update_curve_states({i_ref_curve: curve_new},
-                                     update_figure=False,
-                                     )
+            self.update_curve_states_in_qlist_and_graph({i_ref_curve: curve_new},
+                                                        update_figure=False,
+                                                        )
             self.signal_reference_curve_activate.emit(i_ref_curve)
 
 
@@ -903,53 +903,47 @@ class CurveAnalyze(qtw.QMainWindow):
             curve_new = deepcopy(ref_curve)
             curve_new.set_reference(False)
             # Update graph
-            self.update_curve_states({i_ref_curve: curve_new},
-                                     update_figure=False,
-                                     )
+            self.update_curve_states_in_qlist_and_graph({i_ref_curve: curve_new},
+                                                        update_figure=False,
+                                                        )
             self.signal_reference_curve_deactivate.emit(i_ref_curve)
 
     def _add_single_curve(self, i_insert: int, curve: signal_tools.Curve, update_figure: bool = True,
                           line2d_kwargs={},
                           ):
-        if curve.is_curve():
-            i_max = len(self.curves)
-            if i_insert is None or i_insert >= i_max:
-                # do an add
-                if not curve.has_name_prefix():
-                    curve.set_name_prefix(f"#{i_max:02d}")
-                self.curves.append(curve)
 
-                list_item = qtw.QListWidgetItem(curve.get_full_name())
-                if not curve.is_visible():
-                    font = list_item.font()
-                    font.setWeight(qtg.QFont.Thin)
-                    list_item.setFont(font)
-                self.qlistwidget_for_curves.addItem(list_item)
-
-                self.graph.add_line2d(i_max, curve.get_full_name(), curve.get_xy(),
-                                      update_figure=update_figure, line2d_kwargs={"alpha": 0.9, **line2d_kwargs},
-                                      )
-
-                return i_max
-
-            else:
-                # do an insert
-                curve.set_name_prefix(f"#{i_max:02d}")
-                self.curves.insert(i_insert, curve)
-
-                list_item = qtw.QListWidgetItem(curve.get_full_name())
-                if not curve.is_visible():
-                    font = list_item.font()
-                    font.setWeight(qtg.QFont.Thin)
-                    list_item.setFont(font)
-                self.qlistwidget_for_curves.insertItem(i_insert, list_item)
-
-                self.graph.add_line2d(i_insert, curve.get_full_name(), curve.get_xy(
-                ), update_figure=update_figure, line2d_kwargs={"alpha": 0.9, **line2d_kwargs})
-
-                return i_insert
-        else:
+        if not curve.is_curve():
             raise ValueError("Invalid curve")
+
+        i_max = len(self.curves)
+        if i_insert is None or i_insert >= i_max:
+            # do an add
+            if not curve.has_name_prefix():
+                curve.set_name_prefix(f"#{i_max:02d}")
+            self.curves.append(curve)
+
+            list_item = qtw.QListWidgetItem(curve.get_full_name())
+            self.qlistwidget_for_curves.addItem(list_item)
+
+            self.graph.add_line2d(i_max, curve.get_full_name(), curve.get_xy(),
+                                  update_figure=False, line2d_kwargs={**line2d_kwargs},
+                                  )
+            insert_point = i_max
+
+        else:
+            # do an insert
+            curve.set_name_prefix(f"#{i_max:02d}")
+            self.curves.insert(i_insert, curve)
+
+            list_item = qtw.QListWidgetItem(curve.get_full_name())
+            self.qlistwidget_for_curves.insertItem(i_insert, list_item)
+
+            self.graph.add_line2d(i_insert, curve.get_full_name(), curve.get_xy(
+            ), update_figure=False, line2d_kwargs={**line2d_kwargs})
+
+            insert_point = i_insert
+
+        self.update_curve_states_in_qlist_and_graph({insert_point: curve}, update_figure=update_figure)
 
 
     def set_qitem_font(self, item: QListWidgetItem, set_to: str) -> None:
@@ -982,12 +976,9 @@ class CurveAnalyze(qtw.QMainWindow):
             return
 
         for index, curve in indexes_and_curves.items():
-            item = self.qlistwidget_for_curves.item(index)
-
-            self.set_qitem_font(item, "thin")
             curve.set_visible(False)
 
-        self.update_curve_states(indexes_and_curves)
+        self.update_curve_states_in_qlist_and_graph(indexes_and_curves)
 
     def show_curves(self, indexes: list = None):
         if isinstance(indexes, (list, np.ndarray)):
@@ -1002,12 +993,9 @@ class CurveAnalyze(qtw.QMainWindow):
             return
 
         for index, curve in indexes_and_curves.items():
-            item = self.qlistwidget_for_curves.item(index)
-
-            self.set_qitem_font(item, "normal")
             curve.set_visible(True)
 
-        self.update_curve_states(indexes_and_curves)
+        self.update_curve_states_in_qlist_and_graph(indexes_and_curves)
 
     def toggle_highlight(self, item: qtw.QListWidgetItem):
         index = self.qlistwidget_for_curves.row(item)
@@ -1018,32 +1006,38 @@ class CurveAnalyze(qtw.QMainWindow):
             return
 
         if curve.is_highlighted() is True:
-            if curve.is_visible():
-                self.set_qitem_font(item, "normal")
-            else:
-                self.set_qitem_font(item, "thin")
             curve.set_highlighted(False)
 
         elif curve.is_highlighted() is False:
             curve.set_highlighted(True)
-            self.set_qitem_font(item, "bold")
 
-        self.update_curve_states(indexes_and_curves={index: curve})
+        self.update_curve_states_in_qlist_and_graph(indexes_and_curves={index: curve})
 
-    def update_curve_states(self, indexes_and_curves=None, update_figure=True):
+    def update_curve_states_in_qlist_and_graph(self, indexes_and_curves=None, update_figure=True):
         # 4 states exist
         # reference, 0.1 alpha, not shown on legend
         # highlighted, 1.0 alpha
         # normal shown, 0.9 alpha
         # hidden, 0.1 alpha, not shown on legend
 
-        if not indexes_and_curves:
-            curve_states = {i: (None, curve.is_visible(), curve.is_highlighted(), curve.is_reference())
-                                 for i, curve in enumerate(self.curves)}
+        if indexes_and_curves is None:
+            i_curve_list = list(enumerate(self.curves))
         else:
-            curve_states = {i: (None, curve.is_visible(), curve.is_highlighted(), curve.is_reference())
-                                 for i, curve in indexes_and_curves.items()}
+            i_curve_list = list(indexes_and_curves.items())
+
+        curve_states = {i: (None, curve.is_visible(), curve.is_highlighted(), curve.is_reference())
+                             for i, curve in i_curve_list}
+
         self.graph.update_labels_and_visibilities(curve_states, update_figure=update_figure)
+
+        for index, curve in i_curve_list:
+            item = self.qlistwidget_for_curves.item(index)
+            if curve.is_highlighted():
+                self.set_qitem_font(item, "bold")
+            elif curve.is_visible():
+                self.set_qitem_font(item, "normal")
+            else:
+                self.set_qitem_font(item, "thin")
 
     def open_processing_dialog(self):
         if self.return_false_and_beep_if_no_curve_selected():
@@ -1491,7 +1485,7 @@ class CurveAnalyze(qtw.QMainWindow):
             self._add_single_curve(
                 None, curve, update_figure=False, line2d_kwargs=line_info)
 
-        self.update_curve_states(update_figure=False)
+        self.update_curve_states_in_qlist_and_graph(update_figure=False)
         self.graph.update_figure(recalculate_limits=False)
 
     def save_state_to_file(self):
