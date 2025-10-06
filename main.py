@@ -24,7 +24,6 @@ from difflib import SequenceMatcher
 from dataclasses import dataclass, fields
 from copy import copy, deepcopy
 
-# from matplotlib.backends.qt_compat import QtWidgets as qtw
 from PySide6 import QtWidgets as qtw
 from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
@@ -44,7 +43,6 @@ import pickle
 import logging
 import time
 
-from generictools.signal_tools import curve_summation
 
 app_definitions = {"app_name": "Linecraft",
                    "version": "0.4.2",
