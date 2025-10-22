@@ -56,7 +56,7 @@ app_definitions = {"app_name": "Linecraft",
                    }
 
 # uncomment for release candidate builds
-# app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
+app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 @dataclass
 class Settings:
