@@ -45,7 +45,7 @@ import time
 
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.4.2",
+                   "version": "0.4.3",
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2025 Kerem Basaran",
                    "icon_path": "logo/icon.ico",  # relative posix path
