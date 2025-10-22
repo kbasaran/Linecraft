@@ -906,7 +906,7 @@ class CurveAnalyze(qtw.QMainWindow):
                                                         )
             self.signal_reference_curve_deactivate.emit(i_ref_curve)
 
-    def _add_single_curve(self, i_insert: int, curve: signal_tools.Curve, update_figure: bool = True,
+    def _add_single_curve(self, i_insert: int | None, curve: signal_tools.Curve, update_figure: bool = True,
                           line2d_kwargs={},
                           ):
 
@@ -942,6 +942,8 @@ class CurveAnalyze(qtw.QMainWindow):
             insert_point = i_insert
 
         self.update_curve_states_in_qlist_and_graph({insert_point: curve}, update_figure=update_figure)
+
+        return insert_point
 
 
     def set_qitem_font(self, item: QListWidgetItem, set_to: str) -> None:
