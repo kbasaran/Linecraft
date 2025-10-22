@@ -70,7 +70,7 @@ class Settings:
 
     A_beep: float = 0.25
     show_legend: bool = True
-    max_legend_size: int = 7
+    max_legend_size: int = 7  # 0 means no limit
     import_ppo: int = 48
     export_ppo: int = 48
     matplotlib_style: str = "ggplot"
