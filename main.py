@@ -45,7 +45,7 @@ import time
 
 
 app_definitions = {"app_name": "Linecraft",
-                   "version": "0.4.3",
+                   "version": "0.4.4",
                    "description": "Linecraft - Frequency response plotting and statistics",
                    "copyright": "Copyright (C) 2026 Kerem Basaran",
                    "icon_path": "logo/icon.ico",  # relative posix path
@@ -56,7 +56,7 @@ app_definitions = {"app_name": "Linecraft",
                    }
 
 # uncomment for release candidate builds
-# app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
+app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 @dataclass
 class Settings:
