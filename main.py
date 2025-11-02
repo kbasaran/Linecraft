@@ -2086,10 +2086,10 @@ class SettingsDialog(qtw.QDialog):
 
     def _save_and_close(self, user_form):
         vals = user_form.get_form_values()
-        if vals["matplotlib_style"]["current_text"] != settings.matplotlib_style or vals["graph_grids"]["current_text"] != settings.graph_grids:
+        if vals["matplotlib_style"]["current_text"] != settings.matplotlib_style:
             message_box = qtw.QMessageBox(qtw.QMessageBox.Information,
                                           "Information",
-                                          "Application needs to be restarted to be able to use the new graph settings.",
+                                          "Application needs to be restarted to be able to use the new matplotlib style.",
                                           )
             message_box.setStandardButtons(
                 qtw.QMessageBox.Cancel | qtw.QMessageBox.Ok)
