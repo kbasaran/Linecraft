@@ -1,7 +1,7 @@
 matplotlib == 3.10.*
 numpy == 2.3.*
 pandas  == 2.3.*
-pyperclip == 1.10.*
+pyperclip == 1.11.*
 pyside6 == 6.10.*
 scipy == 1.*
 soundfile

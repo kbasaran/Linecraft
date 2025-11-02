@@ -1,14 +1,9 @@
 unhandled exception when sound device is removed
-make x axis guidelines 10 per decade by default
 make rename window wider
 make write_to_registry check for data type - for all your apps
-take improvement commits in kdbx-conversion
 add drag and drop to open file
-update graph not happening after smoothing
 
 open new windows under same app, like speaker calculator does.
-
-minor locators not working really. y axis has 5dB steps only (major locators)
 
 add action when a line is picked
 
