@@ -619,7 +619,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 curve.add_name_suffix(text)
                 list_item = self.qlistwidget_for_curves.item(index)
                 list_item.setText(curve.get_full_name())
-                new_labels[index] = (curve.get_full_name(), curve.is_visible())
+                new_labels[index] = (curve.get_full_name(), curve.is_visible(), curve.is_highlighted(), curve.is_reference())
 
         # ---- Single curve. Edit base name and suffixes into a new base name
         else:

@@ -1,3 +1,8 @@
+# Bugs
+importing table throws error
+EoL measurement opened with -10 / +10 y axis range
+
+
 unhandled exception when sound device is removed
 make rename window wider
 make write_to_registry check for data type - for all your apps
