@@ -1,5 +1,4 @@
 # Bugs
-importing table throws error
 EoL measurement opened with -10 / +10 y axis range
 
 
