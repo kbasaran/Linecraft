@@ -2117,7 +2117,7 @@ def main():
 
 
     # ---- Catch exceptions and handle with pop-up widget
-    error_handler = pwi.ErrorHandler(mw, logger, developer=False)
+    error_handler = pwi.ErrorHandler(logger, developer=False)
     sys.excepthook = error_handler.excepthook
 
 
