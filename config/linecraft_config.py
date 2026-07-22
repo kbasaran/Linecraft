@@ -1,7 +1,7 @@
 import time
 import logging
 from pathlib import Path
-from generictools.app_config import SettingsManager
+from generictools.settings import SettingsManager
 
 APP_DEFINITIONS = {"app_name": "Linecraft",
                    "version": "0.4.5",
@@ -69,10 +69,6 @@ DEFAULTS = {
 }
 
 
-def singleton_settings():
-    return SettingsManager(APP_DEFINITIONS, DEFAULTS)
-
-
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
     logger = logging.getLogger()
@@ -81,7 +77,7 @@ if __name__ == "__main__":
         answer = input("Type 'x' to delete all settings: ")
         if answer.lower() == 'x':
             logger.info("Deleting all settings...")
-            app_settings = singleton_settings()
+            app_settings = SettingsManager(APP_DEFINITIONS, DEFAULTS)
             app_settings.reset_all_to_defaults()
             logger.info("Settings deleted successfully.")
         else:
