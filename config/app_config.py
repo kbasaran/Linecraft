@@ -7,7 +7,7 @@ APP_DEFINITIONS = {"app_name": "Linecraft",
                    "version": "0.4.5",
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2026 Kerem Basaran",
-                   "icon_path": "images/logo2025.ico",  # relative posix path
+                   "icon_path": "logo/icon.ico",  # relative posix path
                    "author": "Kerem Basaran",
                    "author_short": "kbasaran",
                    "email": "kbasaran@gmail.com",
