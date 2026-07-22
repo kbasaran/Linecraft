@@ -1703,15 +1703,16 @@ class ProcessingDialog(qtw.QDialog):
         self.tab_widget.setCurrentIndex(app_settings.get_value("processing_selected_tab"))
         for i in range(self.tab_widget.count()):
             user_form = self.tab_widget.widget(i)
-            for key, widget in user_form.interactable_widgets.items():
-                saved_setting = app_settings.get_value(key)
+            tab_settings = {}
+            for key in user_form.interactable_widgets.keys():
+                tab_settings[key] = app_settings.get_value(key)
                 # if isinstance(widget, qtw.QCheckBox):
                 #     widget.setChecked(saved_setting)
                 # elif isinstance(widget, qtw.QComboBox):
                 #     widget.setCurrentText(saved_setting)
                 # else:
                 #     widget.setValue(saved_setting)
-                widget.setValue(saved_setting)
+            user_form.update_form_values(tab_settings)
 
         # ---- Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
@@ -1725,14 +1726,16 @@ class ProcessingDialog(qtw.QDialog):
         app_settings.set_value("processing_selected_tab",
                         self.tab_widget.currentIndex())
 
-        for key, widget in user_form.interactable_widgets.items():
+        processing_settings = {}
+        for key in user_form.interactable_widgets.keys():
+            processing_settings[key] = user_form.get_value(key)
             # if isinstance(widget, qtw.QCheckBox):
             #     settings.update(key, widget.isChecked())
             # elif isinstance(widget, qtw.QComboBox):
             #     settings.update(key, widget.currentText())
             # else:
             #     settings.update(key, widget.value())
-            app_settings.set_value(key, widget.value())
+        app_settings.set_all_from_dict(processing_settings)
 
         self.setWindowTitle("Calculating...")
         self.setEnabled(False)  # calculating
@@ -1810,14 +1813,14 @@ class ImportDialog(qtw.QDialog):
         self.layout().addWidget(button_group)
 
         # read values from settings
-        values_new = {}
+        stored_import_settings = {}
         for key, widget in user_form.interactable_widgets.items():
             # if isinstance(widget, qtw.QComboBox):
             #     values_new[key] = {"current_text": getattr(settings, key)}
             # else:
             #     values_new[key] = getattr(settings, key)
-            values_new[key] = app_settings.get_value(key)
-        user_form.update_form_values(values_new)
+            stored_import_settings[key] = app_settings.get_value(key)
+        user_form.update_form_values(stored_import_settings)
 
         # Connections
         button_group.buttons()["close_pushbutton"].clicked.connect(self.reject)
@@ -1827,13 +1830,13 @@ class ImportDialog(qtw.QDialog):
             partial(self._import_requested, "clipboard", user_form))
 
     def _save_form_values_to_settings(self, user_form: pwi.UserForm):
-        values = user_form.get_form_values()
+        form_values = user_form.get_form_values()
         # for widget_name, value in values.items():
             # if isinstance(value, dict) and "current_text" in value.keys():  # if a qcombobox
             #     settings.update(widget_name, value["current_text"])
             # else:
             #     settings.update(widget_name, value)
-        app_settings.set_all_from_dict(values)
+        app_settings.set_all_from_dict(form_values)
 
     @qtc.Slot()
     def deactivate(self):
