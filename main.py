@@ -1713,7 +1713,7 @@ class ProcessingDialog(qtw.QDialog):
                 #     widget.setCurrentText(saved_setting)
                 # else:
                 #     widget.setValue(saved_setting)
-            user_form.update_form_values(tab_settings)
+            user_form.update_complete_form(tab_settings)
 
         # ---- Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
@@ -1821,7 +1821,7 @@ class ImportDialog(qtw.QDialog):
             # else:
             #     values_new[key] = getattr(settings, key)
             stored_import_settings[key] = app_settings.get_value(key)
-        user_form.update_form_values(stored_import_settings)
+        user_form.update_complete_form(stored_import_settings)
 
         # Connections
         button_group.buttons()["close_pushbutton"].clicked.connect(self.reject)
@@ -1971,7 +1971,7 @@ class SettingsDialog(qtw.QDialog):
         values_from_settings = {}
         for key, widget in user_form.interactable_widgets.items():
             values_from_settings[key] = app_settings.get_value(key)
-        user_form.update_form_values(values_from_settings)
+        user_form.update_complete_form(values_from_settings)
 
         # Connections
         button_group.buttons()["cancel_pushbutton"].clicked.connect(
