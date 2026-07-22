@@ -29,7 +29,7 @@ from PySide6 import QtCore as qtc
 from PySide6 import QtGui as qtg
 from PySide6.QtWidgets import QListWidgetItem
 
-from config.app_config import APP_DEFINITIONS, singleton_settings
+from config.linecraft_config import APP_DEFINITIONS, singleton_settings
 from generictools.graphing_widget import MatplotlibWidget
 # https://matplotlib.org/stable/gallery/user_interfaces/embedding_in_qt_sgskip.html
 
@@ -56,6 +56,7 @@ app_definitions = {"app_name": "Linecraft",
                    "website": "https://github.com/kbasaran",
                    }
 app_settings = singleton_settings()
+logger = logging.getLogger(__name__)
 
 # uncomment for release candidate builds
 app_definitions["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
