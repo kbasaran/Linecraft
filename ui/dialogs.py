@@ -15,6 +15,22 @@ app_settings = singleton_settings()
 logger = logging.getLogger(__name__)
 
 
+class HorizontalTextTabStyle(qtw.QProxyStyle):
+    """Keep tab labels horizontal when tabs are placed on the left/right side."""
+
+    def sizeFromContents(self, contents_type, option, size, widget):
+        s = super().sizeFromContents(contents_type, option, size, widget)
+        if contents_type == qtw.QStyle.ContentsType.CT_TabBarTab:
+            s.transpose()
+        return s
+
+    def drawControl(self, element, option, painter, widget):
+        if element == qtw.QStyle.ControlElement.CE_TabBarTabLabel:
+            option = qtw.QStyleOptionTab(option)
+            option.shape = qtw.QTabBar.Shape.RoundedNorth
+        super().drawControl(element, option, painter, widget)
+
+
 class ProcessingDialog(qtw.QDialog):
     signal_processing_request = qtc.Signal(str)
 
@@ -22,9 +38,12 @@ class ProcessingDialog(qtw.QDialog):
         super().__init__(parent=parent)
         self.setWindowModality(qtc.Qt.WindowModality.ApplicationModal)
         self.setWindowTitle("Processing Menu")
+        self.setMinimumHeight(400)
         self.setLayout(qtw.QVBoxLayout())
         self.tab_widget = qtw.QTabWidget(
-            tabPosition=qtw.QTabWidget.TabPosition.North)
+            tabPosition=qtw.QTabWidget.TabPosition.West)
+        self._tab_style = HorizontalTextTabStyle()
+        self.tab_widget.tabBar().setStyle(self._tab_style)
         text_width = qtg.QFontMetrics(self.font()).averageCharWidth()
         # self.tab_widget.setMinimumWidth(text_width * 36)
         self.layout().addWidget(self.tab_widget)
