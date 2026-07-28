@@ -9,7 +9,9 @@ from pathlib import Path
 
 # Dependencies are automatically detected, but it might need fine tuning.
 build_exe_options = {
-    "packages": ["scipy", "numpy"],  # RecursionError in cx_Freeze if these are not provided
+    "packages": ["scipy", "numpy",  # RecursionError in cx_Freeze if these are not provided
+                 "sounddevice", "_sounddevice_data",  # bundle PortAudio native binary
+                 "tabulate"],  # used directly and dynamically by pandas.to_markdown()
     "include_files": [
         (str(Path("LICENSE")), str(Path("LICENSE"))),
         (str(Path("README.md")), str(Path("README.md"))),

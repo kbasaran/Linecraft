@@ -90,8 +90,10 @@ def setup_logging(level: str = "warning", args=None):
         f".{APP_DEFINITIONS['app_name'].lower()}.log")
 
     file_handler = logging.FileHandler(filename=log_filename)
-    stdout_handler = logging.StreamHandler(stream=sys.stdout)
-    handlers = [file_handler, stdout_handler]
+    handlers = [file_handler]
+    # In a windowed (base="gui") frozen build, sys.stdout is None; guard against it.
+    if sys.stdout is not None:
+        handlers.append(logging.StreamHandler(stream=sys.stdout))
 
     logging.basicConfig(handlers=handlers,
                         level=log_level,
