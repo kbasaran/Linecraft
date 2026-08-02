@@ -6,6 +6,11 @@ from pathlib import Path
 from cx_Freeze import setup, Executable
 # https://cx-freeze.readthedocs.io/en/stable/setup_script.html
 
+# cx_Freeze walks the import graph recursively; the deep transitive import trees of
+# numpy/scipy/matplotlib/sympy/pandas exceed Python's default recursion limit of 1000
+# and raise RecursionError during _scan_code. Raise the limit before the build runs.
+sys.setrecursionlimit(5000)
+
 # This script lives in package_win/, one level below the project root. Anchor every
 # source path to the root and put the root on sys.path so the project imports work
 # regardless of the directory the build is launched from (the build itself is run
@@ -20,7 +25,7 @@ from config.app_config import APP_DEFINITIONS
 # sources so the build does not depend on the current directory, root-relative
 # destinations so the frozen layout mirrors the source tree.
 build_exe_options = {
-    "packages": ["scipy", "numpy",  # RecursionError in cx_Freeze if these are not provided
+    "packages": ["scipy", "numpy",
                  "sounddevice", "_sounddevice_data",  # bundle PortAudio native binary
                  "tabulate"],  # used directly and dynamically by pandas.to_markdown()
     "include_files": [
