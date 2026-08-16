@@ -4,7 +4,7 @@ from pathlib import Path
 from generictools.settings import SettingsManager
 
 APP_DEFINITIONS = {"app_name": "Linecraft",
-                   "version": "0.5.0",
+                   "version": "0.6.0",
                    "description": "Loudspeaker design and calculations",
                    "copyright": "Copyright (C) 2026 Kerem Basaran",
                    "icon_path": "logo/icon.ico",  # relative posix path
