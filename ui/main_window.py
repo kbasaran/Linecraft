@@ -735,6 +735,7 @@ class CurveAnalyze(qtw.QMainWindow):
             raise ValueError("Invalid curve")
 
         i_max = len(self.curves)
+        first_curve = i_max == 0
         if i_insert is None or i_insert >= i_max:
             # do an add
             if not curve.has_name_prefix():
@@ -762,7 +763,14 @@ class CurveAnalyze(qtw.QMainWindow):
 
             insert_point = i_insert
 
-        self.update_curve_states_in_qlist_and_graph({insert_point: curve}, update_figure=update_figure)
+        # The first curve on an empty graph needs the limits recalculated. The graph
+        # is still at its default limits (or at the stale ones left over from before
+        # the last curve was removed) and the custom x ticks are not applied yet.
+        self.update_curve_states_in_qlist_and_graph({insert_point: curve},
+                                                    update_figure=update_figure and not first_curve,
+                                                    )
+        if update_figure and first_curve:
+            self.graph.update_figure()
 
         return insert_point
 
