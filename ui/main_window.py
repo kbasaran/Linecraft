@@ -80,11 +80,26 @@ class CurveAnalyze(qtw.QMainWindow):
         if keyEvent.matches(qtg.QKeySequence.Copy):
             self._export_curve()
 
+    # View menu "y axis limits" options -> generictools.graphing_widget policy name.
+    # "Freeze" is handled separately since it needs the graph's current ylim as kwargs.
+    _Y_LIMITS_POLICY_BY_MENU_TEXT = {
+        "Default": None,
+        "SPL optimized": "SPL",
+        "THD/Impedance optimized": "impedance",
+    }
+    # What the application starts with, unless something else picks a policy later.
+    _Y_LIMITS_DEFAULT_MENU_TEXT = "Default"
+
     def _create_core_objects(self):
         # a dictionary of QWidgets that users interact with
         self._interactable_widgets = dict()
         # frequency response curves. THIS IS THE SINGLE SOURCE OF TRUTH FOR CURVE DATA.
         self.curves = []
+        # (policy_name, kwargs) requested via the View menu, applied to the graph
+        # immediately. The menu is disabled while a reference curve is active, since
+        # that overrides the policy until it is deactivated.
+        self._y_limits_policy_selection = (
+            self._Y_LIMITS_POLICY_BY_MENU_TEXT[self._Y_LIMITS_DEFAULT_MENU_TEXT], {})
 
     def _create_menu_bar(self):
         menu_bar = self.menuBar()
@@ -99,13 +114,32 @@ class CurveAnalyze(qtw.QMainWindow):
         settings_action = edit_menu.addAction(
             "Settings..", self.open_settings_dialog)
 
+        view_menu = menu_bar.addMenu("View")
+        view_menu.addSection("y axis limits")
+        self.y_limits_action_group = qtg.QActionGroup(self)
+        self.y_limits_action_group.setExclusive(True)
+        self._y_limits_actions = {}
+        for text in ("Default",
+                     "SPL optimized",
+                     "THD/Impedance optimized",
+                     "Freeze",
+                     ):
+            action = view_menu.addAction(text)
+            action.setCheckable(True)
+            self.y_limits_action_group.addAction(action)
+            self._y_limits_actions[text] = action
+        # Reflect the policy the graph starts with (applied in _create_widgets) without
+        # triggering it -- setChecked() does not emit triggered().
+        self._y_limits_actions[self._Y_LIMITS_DEFAULT_MENU_TEXT].setChecked(True)
+
         help_menu = menu_bar.addMenu("Help")
         about_action = help_menu.addAction("About", self.open_about_menu)
 
     def _create_widgets(self):
         # ---- Create graph and buttons widget
         self.graph = MatplotlibWidget(layout_engine="tight")
-        self.graph.set_y_limits_policy("SPL")
+        policy_name, policy_kwargs = self._y_limits_policy_selection
+        self.graph.set_y_limits_policy(policy_name, **policy_kwargs)
         self.graph_buttons = pwi.PushButtonGroup(
             {
                 "import_curve": "Import curve",
@@ -197,6 +231,14 @@ class CurveAnalyze(qtw.QMainWindow):
         # ---- Double click for highlighting a curve
         self.qlistwidget_for_curves.itemActivated.connect(self.toggle_highlight)
 
+        # ---- View menu: y axis limits
+        # A lambda is used instead of functools.partial: PySide6 does not always
+        # unwrap partial objects when matching the triggered(bool) signal, which
+        # silently drops the "checked" argument.
+        for text, action in self._y_limits_actions.items():
+            action.triggered.connect(
+                lambda checked, menu_text=text: self._y_limits_menu_action_triggered(menu_text, checked))
+
         # ---- Signals to Matplolib graph
         self.signal_reposition_curves_request.connect(
             self.graph.change_lines_order)
@@ -225,6 +267,10 @@ class CurveAnalyze(qtw.QMainWindow):
             lambda: self._interactable_widgets["processing_pushbutton"].setEnabled(False))
         self.graph.signal_reference_curve_activated.connect(
             lambda: self._interactable_widgets["export_curve_pushbutton"].setEnabled(False))
+        # A reference curve overrides the y-limits policy while active; disable the
+        # menu so it can't be changed to something that won't take effect.
+        self.graph.signal_reference_curve_activated.connect(
+            lambda: self.y_limits_action_group.setEnabled(False))
         # self.graph.signal_reference_curve_activated.connect(
         #     lambda: self._interactable_widgets["move_up_pushbutton"].setEnabled(False))
         # self.graph.signal_reference_curve_activated.connect(
@@ -244,6 +290,8 @@ class CurveAnalyze(qtw.QMainWindow):
             lambda: self._interactable_widgets["processing_pushbutton"].setEnabled(True))
         self.graph.signal_reference_curve_deactivated.connect(
             lambda: self._interactable_widgets["export_curve_pushbutton"].setEnabled(True))
+        self.graph.signal_reference_curve_deactivated.connect(
+            lambda: self.y_limits_action_group.setEnabled(True))
         # self.graph.signal_reference_curve_deactivated.connect(
         #     lambda: self._interactable_widgets["move_up_pushbutton"].setEnabled(True))
         # self.graph.signal_reference_curve_deactivated.connect(
@@ -254,6 +302,8 @@ class CurveAnalyze(qtw.QMainWindow):
         #     lambda: self._interactable_widgets["reset_colors_pushbutton"].setEnabled(True))
         self.graph.signal_reference_curve_deactivated.connect(
             self.reference_curve_deactivated_actions)
+        # No need to re-apply the menu selection here: the graph restores the policy
+        # the reference curve was overriding, which is the one this menu last set.
 
         # failed
         self.graph.signal_reference_curve_failed.connect(
@@ -262,6 +312,8 @@ class CurveAnalyze(qtw.QMainWindow):
             lambda: self._interactable_widgets["processing_pushbutton"].setEnabled(True))
         self.graph.signal_reference_curve_failed.connect(
             lambda: self._interactable_widgets["export_curve_pushbutton"].setEnabled(True))
+        self.graph.signal_reference_curve_failed.connect(
+            lambda: self.y_limits_action_group.setEnabled(True))
         # self.graph.signal_reference_curve_failed.connect(
         #     lambda: self._interactable_widgets["move_up_pushbutton"].setEnabled(True))
         # self.graph.signal_reference_curve_failed.connect(
@@ -663,6 +715,27 @@ class CurveAnalyze(qtw.QMainWindow):
             self.auto_importer.start()
         else:
             self.auto_importer.requestInterruption()
+
+    def _y_limits_menu_action_triggered(self, menu_text, checked):
+        # QActionGroup emits triggered(False) for the action it just unchecked;
+        # only react to the one that became checked. The menu is disabled while a
+        # reference curve is active (see _make_connections), so this can't fire then.
+        if not checked:
+            return
+
+        if menu_text == "Freeze":
+            y_min, y_max = self.graph.ax.get_ylim()
+            policy = ("fixed", {"min": y_min, "max": y_max})
+        else:
+            policy = (self._Y_LIMITS_POLICY_BY_MENU_TEXT[menu_text], {})
+
+        self._y_limits_policy_selection = policy
+        self._apply_y_limits_policy_selection()
+
+    def _apply_y_limits_policy_selection(self):
+        policy_name, policy_kwargs = self._y_limits_policy_selection
+        self.graph.set_y_limits_policy(policy_name, **policy_kwargs)
+        self.graph.update_figure()
 
     def reference_curve_activate_successful_actions(self, i_ref_curve):
         curve = self.curves[i_ref_curve]
