@@ -80,19 +80,17 @@ class CurveAnalyze(qtw.QMainWindow):
         if keyEvent.matches(qtg.QKeySequence.Copy):
             self._export_curve()
 
-    # View menu "y axis limits" options -> generictools.graphing_widget policy name.
-    # "Freeze" needs the graph's current ylim as kwargs, so picking it from the menu
-    # is handled separately -- see _y_limits_menu_action_triggered.
-    _Y_LIMITS_POLICY_BY_MENU_TEXT = {
-        "Default": None,
-        "SPL optimized": "SPL",
-        "THD/Impedance optimized": "impedance",
-        "Freeze": "fixed",
-    }
-    _Y_LIMITS_MENU_TEXT_BY_POLICY = {
-        policy: text for text, policy in _Y_LIMITS_POLICY_BY_MENU_TEXT.items()}
+    # View menu "y axis limits": (menu label, generictools.graphing_widget policy name).
+    # The policy name is the identifier everywhere; the label is only what is shown.
+    # It rides on the QAction itself, see _create_menu_bar.
+    _Y_LIMITS_MENU = (
+        ("Default", None),
+        ("SPL optimized", "SPL"),
+        ("THD/Impedance optimized", "impedance"),
+        ("Freeze", "fixed"),
+    )
     # What the application starts with, unless something else picks a policy later.
-    _Y_LIMITS_DEFAULT_MENU_TEXT = "Default"
+    _Y_LIMITS_DEFAULT_POLICY = None
 
     def _create_core_objects(self):
         # a dictionary of QWidgets that users interact with
@@ -102,8 +100,7 @@ class CurveAnalyze(qtw.QMainWindow):
         # (policy_name, kwargs) requested via the View menu, applied to the graph
         # immediately. The menu is disabled while a reference curve is active, since
         # that overrides the policy until it is deactivated.
-        self._y_limits_policy_selection = (
-            self._Y_LIMITS_POLICY_BY_MENU_TEXT[self._Y_LIMITS_DEFAULT_MENU_TEXT], {})
+        self._y_limits_policy_selection = (self._Y_LIMITS_DEFAULT_POLICY, {})
 
     def _create_menu_bar(self):
         menu_bar = self.menuBar()
@@ -122,19 +119,16 @@ class CurveAnalyze(qtw.QMainWindow):
         view_menu.addSection("y axis limits")
         self.y_limits_action_group = qtg.QActionGroup(self)
         self.y_limits_action_group.setExclusive(True)
-        self._y_limits_actions = {}
-        for text in ("Default",
-                     "SPL optimized",
-                     "THD/Impedance optimized",
-                     "Freeze",
-                     ):
-            action = view_menu.addAction(text)
+        self._y_limits_actions = {}  # keyed by policy name, not by label
+        for label, policy_name in self._Y_LIMITS_MENU:
+            action = view_menu.addAction(label)
             action.setCheckable(True)
+            action.setData(policy_name)
             self.y_limits_action_group.addAction(action)
-            self._y_limits_actions[text] = action
+            self._y_limits_actions[policy_name] = action
         # Reflect the policy the graph starts with (applied in _create_widgets) without
         # triggering it -- setChecked() does not emit triggered().
-        self._y_limits_actions[self._Y_LIMITS_DEFAULT_MENU_TEXT].setChecked(True)
+        self._y_limits_actions[self._Y_LIMITS_DEFAULT_POLICY].setChecked(True)
 
         help_menu = menu_bar.addMenu("Help")
         about_action = help_menu.addAction("About", self.open_about_menu)
@@ -236,12 +230,10 @@ class CurveAnalyze(qtw.QMainWindow):
         self.qlistwidget_for_curves.itemActivated.connect(self.toggle_highlight)
 
         # ---- View menu: y axis limits
-        # A lambda is used instead of functools.partial: PySide6 does not always
-        # unwrap partial objects when matching the triggered(bool) signal, which
-        # silently drops the "checked" argument.
-        for text, action in self._y_limits_actions.items():
-            action.triggered.connect(
-                lambda checked, menu_text=text: self._y_limits_menu_action_triggered(menu_text, checked))
+        # The group passes the action that was picked; the one it unchecks in exchange
+        # does not emit triggered, so only the new selection arrives here.
+        self.y_limits_action_group.triggered.connect(
+            self._y_limits_menu_action_triggered)
 
         # ---- Signals to Matplolib graph
         self.signal_reposition_curves_request.connect(
@@ -720,20 +712,19 @@ class CurveAnalyze(qtw.QMainWindow):
         else:
             self.auto_importer.requestInterruption()
 
-    def _y_limits_menu_action_triggered(self, menu_text, checked):
-        # QActionGroup emits triggered(False) for the action it just unchecked;
-        # only react to the one that became checked. The menu is disabled while a
-        # reference curve is active (see _make_connections), so this can't fire then.
-        if not checked:
-            return
+    def _y_limits_menu_action_triggered(self, action):
+        # The menu is disabled while a reference curve is active (see
+        # _make_connections), so this cannot fire then.
+        policy_name = action.data()
 
-        if menu_text == "Freeze":
+        if policy_name == "fixed":
+            # Freeze: hold on to the limits the graph happens to have right now.
             y_min, y_max = self.graph.ax.get_ylim()
-            policy = ("fixed", {"min": y_min, "max": y_max})
+            policy_kwargs = {"min": y_min, "max": y_max}
         else:
-            policy = (self._Y_LIMITS_POLICY_BY_MENU_TEXT[menu_text], {})
+            policy_kwargs = {}
 
-        self._y_limits_policy_selection = policy
+        self._y_limits_policy_selection = (policy_name, policy_kwargs)
         self._apply_y_limits_policy_selection()
 
     def _apply_y_limits_policy_selection(self):
@@ -746,11 +737,12 @@ class CurveAnalyze(qtw.QMainWindow):
         Point both the View menu and the graph at the given policy. For policies
         that come from somewhere other than the menu itself, e.g. a loaded state file.
         """
+        if policy_name not in self._y_limits_actions:
+            # Policy this version does not offer, e.g. from a file written elsewhere.
+            policy_name, policy_kwargs = self._Y_LIMITS_DEFAULT_POLICY, None
         self._y_limits_policy_selection = (policy_name, dict(policy_kwargs or {}))
-        menu_text = self._Y_LIMITS_MENU_TEXT_BY_POLICY.get(
-            policy_name, self._Y_LIMITS_DEFAULT_MENU_TEXT)
         # setChecked() does not emit triggered(), so this only moves the checkmark.
-        self._y_limits_actions[menu_text].setChecked(True)
+        self._y_limits_actions[policy_name].setChecked(True)
         self._apply_y_limits_policy_selection()
 
     def reference_curve_activate_successful_actions(self, i_ref_curve):
@@ -1421,8 +1413,7 @@ class CurveAnalyze(qtw.QMainWindow):
         # was stored (they carry a "ylim" key instead) fall back to the default policy.
         # This also does the figure update.
         self._set_y_limits_policy_selection(
-            graph_info.get("y_limits_policy_name",
-                           self._Y_LIMITS_POLICY_BY_MENU_TEXT[self._Y_LIMITS_DEFAULT_MENU_TEXT]),
+            graph_info.get("y_limits_policy_name", self._Y_LIMITS_DEFAULT_POLICY),
             graph_info.get("y_limits_policy_kwargs"),
             )
 
