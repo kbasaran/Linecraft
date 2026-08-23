@@ -81,12 +81,16 @@ class CurveAnalyze(qtw.QMainWindow):
             self._export_curve()
 
     # View menu "y axis limits" options -> generictools.graphing_widget policy name.
-    # "Freeze" is handled separately since it needs the graph's current ylim as kwargs.
+    # "Freeze" needs the graph's current ylim as kwargs, so picking it from the menu
+    # is handled separately -- see _y_limits_menu_action_triggered.
     _Y_LIMITS_POLICY_BY_MENU_TEXT = {
         "Default": None,
         "SPL optimized": "SPL",
         "THD/Impedance optimized": "impedance",
+        "Freeze": "fixed",
     }
+    _Y_LIMITS_MENU_TEXT_BY_POLICY = {
+        policy: text for text, policy in _Y_LIMITS_POLICY_BY_MENU_TEXT.items()}
     # What the application starts with, unless something else picks a policy later.
     _Y_LIMITS_DEFAULT_MENU_TEXT = "Default"
 
@@ -737,6 +741,18 @@ class CurveAnalyze(qtw.QMainWindow):
         self.graph.set_y_limits_policy(policy_name, **policy_kwargs)
         self.graph.update_figure()
 
+    def _set_y_limits_policy_selection(self, policy_name, policy_kwargs=None):
+        """
+        Point both the View menu and the graph at the given policy. For policies
+        that come from somewhere other than the menu itself, e.g. a loaded state file.
+        """
+        self._y_limits_policy_selection = (policy_name, dict(policy_kwargs or {}))
+        menu_text = self._Y_LIMITS_MENU_TEXT_BY_POLICY.get(
+            policy_name, self._Y_LIMITS_DEFAULT_MENU_TEXT)
+        # setChecked() does not emit triggered(), so this only moves the checkmark.
+        self._y_limits_actions[menu_text].setChecked(True)
+        self._apply_y_limits_policy_selection()
+
     def reference_curve_activate_successful_actions(self, i_ref_curve):
         curve = self.curves[i_ref_curve]
 
@@ -1318,13 +1334,18 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def get_widget_state(self):
         ax = self.graph.ax
+        # y limits are not stored; they are recalculated from the policy on load.
+        # The policy stored is the one selected in the View menu, not the graph's
+        # current one -- an active reference curve overrides that with its own.
+        y_limits_policy_name, y_limits_policy_kwargs = self._y_limits_policy_selection
         graph_info = {"title": ax.get_title(),
                       "xlabel": ax.get_xlabel(),
                       "ylabel": ax.get_ylabel(),
                       "xlim": ax.get_xlim(),
-                      "ylim": ax.get_ylim(),
                       "xscale": ax.get_xscale(),
                       "yscale": ax.get_yscale(),
+                      "y_limits_policy_name": y_limits_policy_name,
+                      "y_limits_policy_kwargs": y_limits_policy_kwargs,
                       }
 
         def collect_line2d_info(line):
@@ -1364,7 +1385,11 @@ class CurveAnalyze(qtw.QMainWindow):
         # ---- delete all lines first
         # self.remove_curves([*range(len(self.curves))])
 
-        if len(self.curves) == 0:
+        # The graph state in the file is only applied when starting from an empty
+        # graph. When adding to curves that are already there, the current state stays.
+        apply_graph_state = len(self.curves) == 0
+
+        if apply_graph_state:
             # ---- apply graph state
             ax = self.graph.ax
             ax.set_title(graph_info["title"])
@@ -1372,9 +1397,9 @@ class CurveAnalyze(qtw.QMainWindow):
             ax.set_ylabel(graph_info["ylabel"])
             ax.set_xscale(graph_info["xscale"])
             ax.set_yscale(graph_info["yscale"])
-            if "xlim" in graph_info.keys():  # added as bug fix in 0.2.4
-                ax.set_xlim(graph_info["xlim"])
-                ax.set_ylim(graph_info["ylim"])
+            # x limits are applied after the figure update at the end of this method,
+            # since a recalculating update can autoscale them away. y limits are not
+            # restored at all -- the stored policy defines them.
 
         # ---- add lines
         for line_info, curve_info in zip(lines_info, curves_info):
@@ -1387,7 +1412,24 @@ class CurveAnalyze(qtw.QMainWindow):
                 None, curve, update_figure=False, line2d_kwargs=line_info)
 
         self.update_curve_states_in_qlist_and_graph(update_figure=False)
-        self.graph.update_figure(recalculate_limits=False)
+
+        if not apply_graph_state:
+            self.graph.update_figure(recalculate_limits=False)
+            return
+
+        # ---- y limits: from the policy stored in the file. Files written before this
+        # was stored (they carry a "ylim" key instead) fall back to the default policy.
+        # This also does the figure update.
+        self._set_y_limits_policy_selection(
+            graph_info.get("y_limits_policy_name",
+                           self._Y_LIMITS_POLICY_BY_MENU_TEXT[self._Y_LIMITS_DEFAULT_MENU_TEXT]),
+            graph_info.get("y_limits_policy_kwargs"),
+            )
+
+        # ---- x limits, after the update above, which can autoscale them away
+        if "xlim" in graph_info.keys():  # added as bug fix in 0.2.4
+            self.graph.ax.set_xlim(graph_info["xlim"])
+            self.graph.canvas.draw_idle()
 
     def save_state_to_file(self):
         path_unverified = qtw.QFileDialog.getSaveFileName(self, caption='Save state to a file..',
