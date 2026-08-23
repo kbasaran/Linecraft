@@ -1326,10 +1326,14 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def get_widget_state(self):
         ax = self.graph.ax
-        # y limits are not stored; they are recalculated from the policy on load.
-        # The policy stored is the one selected in the View menu, not the graph's
-        # current one -- an active reference curve overrides that with its own.
-        y_limits_policy_name, y_limits_policy_kwargs = self._y_limits_policy_selection
+        # y limits are not stored as such; they are recalculated from the policy on
+        # load. The kwargs come off the axes rather than off the menu selection, since
+        # the user can move the limits with the matplotlib toolbar after picking a
+        # policy. save_state_to_file deactivates any reference curve first, so these
+        # limits always belong to the policy stored here.
+        y_limits_policy_name, _ = self._y_limits_policy_selection
+        y_min, y_max = ax.get_ylim()
+        y_limits_policy_kwargs = {"min": y_min, "max": y_max}
         graph_info = {"title": ax.get_title(),
                       "xlabel": ax.get_xlabel(),
                       "ylabel": ax.get_ylabel(),
@@ -1444,6 +1448,13 @@ class CurveAnalyze(qtw.QMainWindow):
             raise NotADirectoryError(file_raw)
 
         app_settings.set_value("last_used_folder", str(file.parent))
+
+        # A saved file cannot hold an active reference curve, so a loaded one never has
+        # it. Deactivating here keeps what is on screen equal to what the file gives
+        # back, and lets get_widget_state simply read the limits off the axes.
+        # Does nothing when there is no reference curve.
+        self._interactable_widgets["set_reference_pushbutton"].setChecked(False)
+
         package = self.get_widget_state()
         with open(file, "wb") as f:
             f.write(package)
