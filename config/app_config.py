@@ -14,7 +14,7 @@ APP_DEFINITIONS = {"app_name": "Linecraft",
                    "website": "https://github.com/kbasaran",
                    }
 # uncomment for release candidate builds
-APP_DEFINITIONS["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
+# APP_DEFINITIONS["version"] += "rc" + time.strftime("%y%m%d", time.localtime())
 
 DEFAULTS = {
     "app_name": APP_DEFINITIONS["app_name"],
