@@ -502,7 +502,7 @@ class SettingsDialog(qtw.QDialog):
                                          "Interpolate the curve to here defined points per octave in import"
                                          "\nThis is used to simplify curves with too many points, such as Klippel graph imports."
                                          "\nSet to '0' to do no modification to curve."
-                                         "\nDefault value: 384",
+                                         "\nDefault value: 48",
                                          ),
                           "Interpolate during import (ppo)",
                           )
@@ -511,7 +511,7 @@ class SettingsDialog(qtw.QDialog):
                                          "Interpolate the curve to here defined points per octave while exporting"
                                          "\nThis is used to simplify curves with too many points, such as Klippel graph imports."
                                          "\nSet to '0' to do no modifications to curve."
-                                         "\nDefault value: 96",
+                                         "\nDefault value: 48",
                                          ),
                           "Interpolate before export (ppo)",
                           )
