@@ -77,8 +77,6 @@ class CurveAnalyze(qtw.QMainWindow):
             self.qlistwidget_for_curves.setCurrentRow(-1)
         if keyEvent.matches(qtg.QKeySequence.Paste):
             self.import_single_curve()
-        if keyEvent.matches(qtg.QKeySequence.Copy):
-            self._export_curve()
 
     # View menu "y axis limits": (menu label, generictools.graphing_widget policy name).
     # The policy name is the identifier everywhere; the label is only what is shown.
@@ -215,6 +213,9 @@ class CurveAnalyze(qtw.QMainWindow):
             self.show_curves)
         self._interactable_widgets["export_curve_pushbutton"].clicked.connect(
             self._export_curve)
+        # A shortcut, not keyPressEvent: the curve list would otherwise copy the item name to the
+        # clipboard first, and on Windows the export then fails because the clipboard is still busy.
+        qtg.QShortcut(qtg.QKeySequence.Copy, self, self._export_curve)
         # self._interactable_widgets["auto_import_pushbutton"].toggled.connect(
         #     self._auto_importer_status_toggle)
         self._interactable_widgets["set_reference_pushbutton"].toggled.connect(
@@ -330,11 +331,13 @@ class CurveAnalyze(qtw.QMainWindow):
         if self.return_false_and_beep_if_no_curve_selected():
             return
         else:
-            signal_tools.export_curves_to_clipboard(
+            df = signal_tools.curves_to_dataframe(
                 self.get_selected_curves_sorted(),
                 ppo=app_settings.get_value("export_ppo"),  # 0 means no interpolation
                 must_include_freq=app_settings.get_value("interpolate_must_contain_hz"),
                 )
+            # Same tab separated text as pandas' to_clipboard(excel=True), but set through Qt.
+            qtg.QGuiApplication.clipboard().setText(df.to_csv(sep="\t"))
             self.signal_good_beep.emit()
 
     def _get_curve_from_clipboard(self):
