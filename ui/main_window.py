@@ -153,7 +153,7 @@ class CurveAnalyze(qtw.QMainWindow):
                 "show": "Show",
                 "set_reference": "Set reference",
                 "processing": "Processing",
-                "export_curve": "Export curve",
+                "export_curve": "Export curve(s)",
             },
             {"import_curve": "Import 2D curve from clipboard",
              # "auto_import": "Attempt an import whenever new data is found on the clipboard.",
@@ -329,14 +329,12 @@ class CurveAnalyze(qtw.QMainWindow):
         """Paste selected curve(s) to clipboard in a table."""
         if self.return_false_and_beep_if_no_curve_selected():
             return
-        elif len(self.qlistwidget_for_curves.selectedItems()) > 1:
-            error_message = "Can only export one curve at a time."
-            pwi.ErrorPopup(self, error_message)
         else:
-            curve = self.get_selected_curves()[0]
-            curve.export_to_clipboard(ppo=app_settings.get_value("export_ppo"),
-                                      must_include_freq=app_settings.get_value("interpolate_must_contain_hz"),
-                                      )
+            signal_tools.export_curves_to_clipboard(
+                self.get_selected_curves_sorted(),
+                ppo=app_settings.get_value("export_ppo"),  # 0 means no interpolation
+                must_include_freq=app_settings.get_value("interpolate_must_contain_hz"),
+                )
             self.signal_good_beep.emit()
 
     def _get_curve_from_clipboard(self):
@@ -367,7 +365,7 @@ class CurveAnalyze(qtw.QMainWindow):
 
     def get_selected_curves_sorted(self) -> list:
         curves = self.get_selected_curves(as_dict=True)
-        return sorted(curves.items()).values()
+        return [curve for _, curve in sorted(curves.items())]
 
     def count_selected_curves(self) -> int:
         selected_indexes = self.get_selected_curve_indexes()
@@ -681,10 +679,17 @@ class CurveAnalyze(qtw.QMainWindow):
         logger.info(df.info)
 
         # ---- put on the graph
+        skipped_names = []
         for name, values in df.iterrows():
             logger.debug(f"Attempting to add xy data of index {
                          name} as curve.")
-            curve = signal_tools.Curve((df.columns, values))
+            # Blank cells are frequencies without data. Drop them so curves stay continuous.
+            values = values.dropna()
+            if len(values) < 2:
+                logger.warning(f"Skipping '{name}': less than 2 data points.")
+                skipped_names.append(str(name))
+                continue
+            curve = signal_tools.Curve((values.index, values))
 
             if app_settings.get_value("import_ppo") > 0:
                 x, y = curve.get_xy()
@@ -701,7 +706,14 @@ class CurveAnalyze(qtw.QMainWindow):
         logger.info(f"Import of curves finished in {
                     (time.perf_counter()-start_time)*1000:.4g}ms")
         self.graph.update_figure()
-        self.signal_table_import_successful.emit()
+        if len(skipped_names) < len(df.index):
+            self.signal_table_import_successful.emit()
+        else:
+            self.signal_table_import_fail.emit()
+
+        if skipped_names:
+            pwi.ErrorPopup(self, ("Skipped rows with less than 2 data points:\n"
+                                  + "\n".join(skipped_names)))
 
     def _auto_importer_status_toggle(self, checked: bool):
         if checked == 1:

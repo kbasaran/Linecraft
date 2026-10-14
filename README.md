@@ -10,6 +10,7 @@ Linecraft is a tool for visualization and statistical analysis of frequency resp
 - Calculation of interquartile range and detection of outliers in a group
 - Sorting of curves based on their correlation to a reference curve (i.e. best fit to reference)
 - Display of deviations from a reference curve (i.e. set a certain curve as y<sub>ref</sub>)
+- Export of one or multiple curves to clipboard as a table
 
 ## Scope
 Linecraft accepts only real and positive numbers for frequency (horizontal) axis. Values must be unique and sorted.
@@ -76,6 +77,8 @@ Choose how your table is laid out.
 
 > If there is no row with names, select 0. Application will generate a unique name for each curve.
 
+> Empty cells are treated as frequencies without data and are left out of that curve. Rows with less than 2 data points are skipped.
+
 ### Line number of headers
 Use this value to define the line number which contains the headers. E.g. in below example the line number of headers need to be set to 3 since the table starts with 2 rows of unused data.
 > Counting here uses natural numbers, therefore starting at 1.
@@ -127,6 +130,19 @@ Use this to change name of a curve. If multiple curves are selected, this functi
 Reset the curve colors to the default Matplotlib sequence. The curve's position in the list defines its color.
 ## Set reference
 Subtracts all curves on graph by the selected curve. This makes the selected curve into the 'y=0' line and all other curves are shown with their relative value to this curve.
+
+# Exporting curves
+Use the 'Export curve(s)' button or Ctrl+C to copy the selected curves to the clipboard as a tab separated table that can be pasted into a spreadsheet. The table has a 'Frequency' column followed by one column per curve, named after the curve and ordered as in the curve list. This layout can be imported back into Linecraft with the 'headers are names' layout type.
+
+| Frequency | A1 | A2 |
+| --- | --- | --- |
+| 100 | 80 | |
+| 200 | 85 | 85 |
+| 400 | 84 | 82 |
+
+- If 'Interpolate before export (ppo)' in settings is above 0, all curves are interpolated to a common frequency array with that many points per octave. The array spans from the lowest to the highest frequency among the selected curves.
+- If it is set to 0, the curves are exported without modification. The 'Frequency' column then contains every frequency point that exists in any of the selected curves.
+- In both cases a curve has empty cells at frequencies it does not cover.
 
 # Processing
 Most of the processing functions rely on having common frequency points between different curves. This way, statistical operations can be done per frequency point. If your curves do not have common frequency points, consider using the 'interpolate' method to interpolate your curves to a new array of frequency points. You can also use the 'interpolate on import' function in settings to interpolate curves automatically during import.
